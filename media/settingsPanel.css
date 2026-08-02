@@ -1,0 +1,149 @@
+body {
+  font-family: var(--vscode-font-family);
+  color: var(--vscode-foreground);
+  font-size: var(--vscode-font-size);
+  padding: 0 12px 24px;
+}
+
+h2 {
+  font-size: 0.8em;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--vscode-descriptionForeground);
+  margin: 18px 0 4px;
+}
+
+.field {
+  margin: 8px 0;
+}
+
+.field label {
+  display: block;
+  margin-bottom: 3px;
+  font-size: 0.95em;
+}
+
+.hint {
+  color: var(--vscode-descriptionForeground);
+  font-size: 0.85em;
+  margin: 2px 0 0;
+}
+
+.hint-inline {
+  color: var(--vscode-descriptionForeground);
+  font-size: 0.85em;
+}
+
+.control {
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--vscode-input-background);
+  color: var(--vscode-input-foreground);
+  border: 1px solid var(--vscode-input-border, transparent);
+  border-radius: 2px;
+  padding: 4px 6px;
+  font-family: inherit;
+  font-size: inherit;
+}
+
+.control:focus {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: -1px;
+}
+
+select.control {
+  cursor: pointer;
+}
+
+.checkbox-row {
+  display: flex;
+  align-items: center;
+  margin: 10px 0;
+  cursor: pointer;
+  font-size: 0.95em;
+}
+
+button {
+  background: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+  border: none;
+  border-radius: 2px;
+  padding: 5px 12px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+button:hover {
+  background: var(--vscode-button-hoverBackground);
+}
+
+.key-row {
+  margin: 10px 0;
+}
+
+.key-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 3px;
+}
+
+.key-label {
+  font-size: 0.95em;
+}
+
+.key-status {
+  font-size: 0.8em;
+}
+
+.key-controls {
+  display: flex;
+  gap: 6px;
+}
+
+.key-controls .control {
+  flex: 1;
+}
+
+.status-ok {
+  color: var(--vscode-testing-iconPassed, #73c991);
+}
+
+.status-missing {
+  color: var(--vscode-testing-iconFailed, #f14c4c);
+}
+
+.force-save {
+  margin-left: 6px;
+  padding: 1px 6px;
+  font-size: 0.85em;
+}
+
+.invalid-flash {
+  border-color: var(--vscode-inputValidation-errorBorder, #f14c4c);
+}
+
+.status-line {
+  color: var(--vscode-inputValidation-errorForeground, #f14c4c);
+  font-size: 0.85em;
+  min-height: 1.2em;
+  margin: 4px 0 0;
+}
+
+details {
+  margin: 6px 0;
+  border: 1px solid var(--vscode-panel-border, transparent);
+  border-radius: 3px;
+  padding: 4px 8px;
+}
+
+summary {
+  cursor: pointer;
+  font-size: 0.95em;
+  padding: 2px 0;
+}
+
+.loading {
+  color: var(--vscode-descriptionForeground);
+}

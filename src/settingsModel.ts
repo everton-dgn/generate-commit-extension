@@ -1,5 +1,3 @@
-import type * as vscode from 'vscode';
-import type { AppConfig } from './config';
 import type { ProviderId } from './types';
 
 /** Parses a positive integer setting; undefined when invalid or below min. */
@@ -38,66 +36,6 @@ export const LANGUAGE_OPTIONS: readonly LanguageOption[] = [
   { code: 'ko', label: '한국어' },
   { code: 'ru', label: 'Русский' },
 ];
-
-export type SettingsItemId =
-  | 'provider'
-  | 'apiKey'
-  | 'language'
-  | 'maxDiffChars'
-  | 'maxFileSizeKB'
-  | 'includeRecentCommits'
-  | 'customPrompt'
-  | 'unstagedFallback'
-  | 'timeoutSeconds'
-  | 'advanced';
-
-export interface SettingsItem extends vscode.QuickPickItem {
-  readonly id: SettingsItemId;
-}
-
-/** Master menu: every user-facing setting, with its current value. */
-export function buildSettingsMenu(cfg: AppConfig): SettingsItem[] {
-  return [
-    { id: 'provider', label: '$(hubot) Provider and model…', description: cfg.provider },
-    { id: 'apiKey', label: '$(key) API key…', description: 'configure or update' },
-    { id: 'language', label: '$(globe) Message language…', description: cfg.language },
-    {
-      id: 'maxDiffChars',
-      label: '$(fold) Max diff characters…',
-      description: String(cfg.maxDiffChars),
-    },
-    {
-      id: 'maxFileSizeKB',
-      label: '$(file) Max file size (KB)…',
-      description: String(cfg.maxFileSizeKB),
-    },
-    {
-      id: 'includeRecentCommits',
-      label: '$(history) Recent commits as style context…',
-      description: cfg.includeRecentCommits ? 'on' : 'off',
-    },
-    {
-      id: 'customPrompt',
-      label: '$(edit) Custom prompt instructions…',
-      description: cfg.customPrompt.trim() ? 'set' : 'empty',
-    },
-    {
-      id: 'unstagedFallback',
-      label: '$(git-pull-request) When no staged changes…',
-      description: cfg.unstagedFallback,
-    },
-    {
-      id: 'timeoutSeconds',
-      label: '$(watch) Timeout (seconds)…',
-      description: String(cfg.timeoutSeconds),
-    },
-    {
-      id: 'advanced',
-      label: '$(settings-gear) Advanced per provider…',
-      description: 'baseUrl, authHeader, effort',
-    },
-  ];
-}
 
 export interface AdvancedItem {
   readonly key: 'model' | 'baseUrl' | 'authHeader' | 'effort';
@@ -145,4 +83,125 @@ export function advancedItemsFor(id: ProviderId): AdvancedItem[] {
     case 'codexCli':
       return [TEXT_MODEL, { key: 'effort', label: 'Effort (model-dependent)', kind: 'text' }];
   }
+}
+
+// ---------- settings panel message validation ----------
+
+export type SettingKind = 'string' | 'integer' | 'boolean' | 'enum' | 'baseUrl';
+
+export interface SettingSpec {
+  readonly kind: SettingKind;
+  readonly min?: number;
+  readonly options?: readonly string[];
+}
+
+/**
+ * Whitelist of every key the settings panel may write via config.update.
+ * Keys are relative to the generateCommit section; provider-scoped keys use
+ * the "<id>.<field>" form. Anything outside this map is rejected.
+ */
+export const PANEL_SETTINGS: Readonly<Record<string, SettingSpec>> = {
+  provider: {
+    kind: 'enum',
+    options: ['claudeCli', 'codexCli', 'openrouter', 'kimi', 'glm', 'minimax', 'anthropicCustom'],
+  },
+  language: { kind: 'string' },
+  maxDiffChars: { kind: 'integer', min: 1000 },
+  maxFileSizeKB: { kind: 'integer', min: 1 },
+  includeRecentCommits: { kind: 'boolean' },
+  customPrompt: { kind: 'string' },
+  unstagedFallback: { kind: 'enum', options: ['ask', 'always', 'never'] },
+  timeoutSeconds: { kind: 'integer', min: 5 },
+  'openrouter.model': { kind: 'string' },
+  'openrouter.baseUrl': { kind: 'baseUrl' },
+  'kimi.model': { kind: 'string' },
+  'kimi.baseUrl': { kind: 'baseUrl' },
+  'glm.model': { kind: 'string' },
+  'glm.baseUrl': { kind: 'baseUrl' },
+  'minimax.model': { kind: 'string' },
+  'minimax.baseUrl': { kind: 'baseUrl' },
+  'anthropicCustom.model': { kind: 'string' },
+  'anthropicCustom.baseUrl': { kind: 'baseUrl' },
+  'anthropicCustom.authHeader': { kind: 'enum', options: ['x-api-key', 'bearer'] },
+  'claudeCli.model': { kind: 'string' },
+  'claudeCli.effort': { kind: 'enum', options: ['', 'low', 'medium', 'high', 'xhigh', 'max'] },
+  'codexCli.model': { kind: 'string' },
+  'codexCli.effort': { kind: 'string' },
+};
+
+export type ValidatedValue = string | number | boolean;
+
+export type ValidationResult = { ok: true; value: ValidatedValue } | { ok: false };
+
+/**
+ * Validates a value coming from the settings panel webview against the
+ * whitelist. Never trust webview messages: unknown keys and type mismatches
+ * are rejected.
+ */
+export function validateSettingValue(key: string, value: unknown): ValidationResult {
+  // Object.hasOwn blocks inherited members (__proto__, constructor, ...),
+  // which would otherwise pass the truthiness check below.
+  const spec = Object.hasOwn(PANEL_SETTINGS, key) ? PANEL_SETTINGS[key] : undefined;
+  if (!spec) return { ok: false };
+  switch (spec.kind) {
+    case 'boolean':
+      return typeof value === 'boolean' ? { ok: true, value } : { ok: false };
+    case 'integer': {
+      const parsed = typeof value === 'number' ? value : Number(String(value).trim());
+      const min = spec.min ?? 0;
+      return Number.isInteger(parsed) && parsed >= min
+        ? { ok: true, value: parsed }
+        : { ok: false };
+    }
+    case 'enum':
+      return typeof value === 'string' && spec.options?.includes(value)
+        ? { ok: true, value }
+        : { ok: false };
+    case 'baseUrl':
+      return typeof value === 'string' && isValidBaseUrl(value)
+        ? { ok: true, value: value.trim() }
+        : { ok: false };
+    case 'string':
+      return typeof value === 'string' ? { ok: true, value: value.trim() } : { ok: false };
+  }
+}
+
+/** Narrows provider ids that accept an API key (secret storage targets). */
+export function isKeyBackedProvider(
+  id: string,
+): id is 'openrouter' | 'kimi' | 'glm' | 'minimax' | 'anthropicCustom' {
+  return (
+    id === 'openrouter' ||
+    id === 'kimi' ||
+    id === 'glm' ||
+    id === 'minimax' ||
+    id === 'anthropicCustom'
+  );
+}
+
+// ---------- settings panel message protocol ----------
+
+export type PanelMessage =
+  | { type: 'ready' }
+  | { type: 'update'; key: string; value: unknown }
+  | { type: 'saveKey'; provider: string; value: string; force: boolean };
+
+/** Parses and sanitizes a raw postMessage from the settings panel webview. */
+export function parseMessage(raw: unknown): PanelMessage | undefined {
+  if (typeof raw !== 'object' || raw === null) return undefined;
+  const msg = raw as {
+    type?: unknown;
+    key?: unknown;
+    value?: unknown;
+    provider?: unknown;
+    force?: unknown;
+  };
+  if (msg.type === 'ready') return { type: 'ready' };
+  if (msg.type === 'update' && typeof msg.key === 'string') {
+    return { type: 'update', key: msg.key, value: msg.value };
+  }
+  if (msg.type === 'saveKey' && typeof msg.provider === 'string' && typeof msg.value === 'string') {
+    return { type: 'saveKey', provider: msg.provider, value: msg.value, force: msg.force === true };
+  }
+  return undefined;
 }

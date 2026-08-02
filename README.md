@@ -20,10 +20,8 @@ codium --enable-proposed-api=everton.generate-commit
 ```
 
 Sem esse flag, o menu `scm/inputBox` é rejeitado silenciosamente e a extensão
-segue funcionando pelos pontos estáveis, sempre visíveis:
-
-- botão na barra de título do painel Source Control (`scm/title`);
-- Command Palette: `Generate Commit: Generate Commit Message`.
+segue funcionando pela Command Palette (`Generate Commit: Generate Commit
+Message`) e pelo painel Generate Commit na barra lateral esquerda.
 
 Em modo de desenvolvimento (F5), a proposta funciona sem flags.
 
@@ -37,9 +35,11 @@ Em modo de desenvolvimento (F5), a proposta funciona sem flags.
   chamada HTTP ou mata o processo do CLI.
 - Troca rápida de provider/modelo pelo comando `Generate Commit: Switch
   Provider / Model`.
-- Todas as configurações pela UI: o comando `Generate Commit: Settings`
-  abre um menu com cada opção e seu valor atual (idioma, limites, prompt
-  customizado, timeout, base URLs, esforço dos CLIs), sem editar JSON.
+- Painel **Generate Commit** na barra lateral esquerda (ícone de
+  estrelinhas): todas as configurações em um formulário inline na própria
+  sidebar, com valor atual de cada uma (provider, chaves com status, idioma,
+  limites, prompt customizado, fallback, timeout e seções avançadas por
+  provider), sem nenhuma janela flutuante e sem editar JSON.
 - Primeiro uso guiado: sem nenhum provider disponível, o fluxo abre a
   configuração (escolha do provider, chave mascarada, validação rápida,
   salvamento no Secret Storage).
@@ -88,15 +88,18 @@ Notas:
 
 ### Configurar uma chave de API
 
-Comando `Generate Commit: Configure API Key`: escolha o provider, cole a
-chave (campo mascarado), aguarde a validação rápida e pronto. A chave fica em
-`context.secrets` (Secret Storage do VS Code), **nunca** em `settings.json`.
+No painel **Generate Commit** da barra lateral, seção **API keys**: cole a
+chave do provider (campo de senha, nunca pré-preenchido), clique em Save e
+aguarde a validação rápida. O status fica visível ao lado do provider
+(configured/not set). A chave fica em `context.secrets` (Secret Storage do
+VS Code), **nunca** em `settings.json` e nunca renderizada no painel.
 
 ## Settings
 
-Todas as opções abaixo também podem ser alteradas pela interface, no comando
-`Generate Commit: Settings` (menu com valor atual, QuickPicks e campos
-validados), além da tela de Settings do editor (filtre por `generateCommit`).
+Todas as opções abaixo também podem ser alteradas pela interface, no painel
+**Generate Commit** da barra lateral (formulário inline com validação; o
+comando `Generate Commit: Settings` abre o painel), além da tela de
+Settings do editor (filtre por `generateCommit`).
 
 | Setting | Default | Descrição |
 |---------|---------|-----------|
@@ -141,8 +144,13 @@ validados), além da tela de Settings do editor (filtre por `generateCommit`).
   relido antes de preencher a caixa e o resultado é descartado se o stage
   mudou durante a geração.
 - **Zero telemetria** e zero chamadas a serviços além do provider escolhido.
-- Sem webview e sem a API `vscode.lm` (que depende do Copilot e não existe
-  no VSCodium).
+- **Webview do painel travada**: o formulário de configurações roda numa
+  WebviewView com CSP `default-src 'none'` (só arquivos locais do bundle,
+  sem conteúdo remoto, sem script/estilo inline), valores renderizados via
+  DOM seguro (sem `innerHTML` com dados do usuário), mensagens validadas
+  contra uma whitelist de chaves antes de qualquer `config.update` e
+  segredos nunca renderizados no DOM (campos de senha só escrevem).
+- Sem a API `vscode.lm` (que depende do Copilot e não existe no VSCodium).
 
 ## Desenvolvimento
 
