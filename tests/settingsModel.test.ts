@@ -114,6 +114,13 @@ describe('validateSettingValue', () => {
     expect(validateSettingValue('customPrompt', 42).ok).toBe(false);
   });
 
+  it('rejects the Custom sentinel as a model id but allows the empty default', async () => {
+    const { validateSettingValue, CUSTOM_MODEL_VALUE } = await import('../src/settingsModel');
+    expect(validateSettingValue('glm.model', CUSTOM_MODEL_VALUE).ok).toBe(false);
+    expect(validateSettingValue('glm.model', '')).toEqual({ ok: true, value: '' });
+    expect(validateSettingValue('customPrompt', CUSTOM_MODEL_VALUE).ok).toBe(true);
+  });
+
   it('covers every key the panel is allowed to write', () => {
     const expected = [
       'provider',
@@ -189,5 +196,51 @@ describe('parseMessage', () => {
       value: 'k',
       force: false,
     });
+  });
+});
+
+describe('buildModelOptions', () => {
+  it('puts provider default first, then catalog models, then the sentinel', async () => {
+    const { buildModelOptions, CUSTOM_MODEL_VALUE } = await import('../src/settingsModel');
+    const { options, selected } = buildModelOptions(['a', 'b'], 'a');
+    expect(options.map((o) => o.value)).toEqual(['', 'a', 'b', CUSTOM_MODEL_VALUE]);
+    expect(selected).toBe('a');
+  });
+
+  it('keeps the current value right after the default when it is not in the catalog', async () => {
+    const { buildModelOptions } = await import('../src/settingsModel');
+    const { options, selected } = buildModelOptions(['a'], 'custom-x');
+    expect(options.map((o) => o.value)).toEqual(['', 'custom-x', 'a', '__custom']);
+    expect(options[1]).toEqual({ value: 'custom-x', label: 'custom-x (current)' });
+    expect(selected).toBe('custom-x');
+  });
+
+  it('offers the provider default when nothing is set', async () => {
+    const { buildModelOptions } = await import('../src/settingsModel');
+    const { options, selected } = buildModelOptions(['a'], '');
+    expect(options[0]).toEqual({ value: '', label: '(provider default)' });
+    expect(selected).toBe('');
+  });
+
+  it('works with an empty catalog', async () => {
+    const { buildModelOptions, CUSTOM_MODEL_VALUE } = await import('../src/settingsModel');
+    const { options } = buildModelOptions([], 'x');
+    expect(options.map((o) => o.value)).toEqual(['', 'x', CUSTOM_MODEL_VALUE]);
+  });
+
+  it('filters a literal sentinel collision out of the catalog', async () => {
+    const { buildModelOptions, CUSTOM_MODEL_VALUE } = await import('../src/settingsModel');
+    const { options } = buildModelOptions(['a', CUSTOM_MODEL_VALUE], 'a');
+    expect(options.map((o) => o.value)).toEqual(['', 'a', CUSTOM_MODEL_VALUE]);
+  });
+});
+
+describe('buildModelOptions purity', () => {
+  it('does not mutate the catalog array it receives', async () => {
+    const { buildModelOptions } = await import('../src/settingsModel');
+    const models = ['a', 'b'];
+    const frozen = Object.freeze(models);
+    expect(() => buildModelOptions(frozen, 'custom-x')).not.toThrow();
+    expect(models).toEqual(['a', 'b']);
   });
 });

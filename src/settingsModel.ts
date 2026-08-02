@@ -161,8 +161,13 @@ export function validateSettingValue(key: string, value: unknown): ValidationRes
       return typeof value === 'string' && isValidBaseUrl(value)
         ? { ok: true, value: value.trim() }
         : { ok: false };
-    case 'string':
-      return typeof value === 'string' ? { ok: true, value: value.trim() } : { ok: false };
+    case 'string': {
+      if (typeof value !== 'string') return { ok: false };
+      const trimmed = value.trim();
+      // The Custom… sentinel is a UI control, never a persistable model id.
+      if (key.endsWith('.model') && trimmed === CUSTOM_MODEL_VALUE) return { ok: false };
+      return { ok: true, value: trimmed };
+    }
   }
 }
 
@@ -177,6 +182,37 @@ export function isKeyBackedProvider(
     id === 'minimax' ||
     id === 'anthropicCustom'
   );
+}
+
+// ---------- model dropdown options ----------
+
+/** Sentinel option in the model select that switches to free-text mode. */
+export const CUSTOM_MODEL_VALUE = '__custom';
+
+export interface ModelOption {
+  readonly value: string;
+  readonly label: string;
+}
+
+/**
+ * Options for the model dropdown: the provider-default empty option first,
+ * the current value when it is not in the catalog (so a custom model never
+ * snaps away), every catalog entry except any literal sentinel collision,
+ * and the Custom… sentinel at the end.
+ */
+export function buildModelOptions(
+  models: readonly string[],
+  current: string,
+): { options: ModelOption[]; selected: string } {
+  const options: ModelOption[] = [{ value: '', label: '(provider default)' }];
+  if (current && !models.includes(current)) {
+    options.push({ value: current, label: `${current} (current)` });
+  }
+  for (const model of models) {
+    if (model !== CUSTOM_MODEL_VALUE) options.push({ value: model, label: model });
+  }
+  options.push({ value: CUSTOM_MODEL_VALUE, label: 'Custom…' });
+  return { options, selected: current };
 }
 
 // ---------- settings panel message protocol ----------

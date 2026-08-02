@@ -10,8 +10,11 @@ import {
   validateApiKey,
 } from './providersRuntime';
 import {
+  buildModelOptions,
+  CUSTOM_MODEL_VALUE,
   isKeyBackedProvider,
   LANGUAGE_OPTIONS,
+  type ModelOption,
   parseMessage,
   validateSettingValue,
 } from './settingsModel';
@@ -34,6 +37,8 @@ interface PanelProviderState {
   readonly effort: string;
   readonly hasKey: boolean;
   readonly models: readonly string[];
+  readonly modelOptions: readonly ModelOption[];
+  readonly modelSelected: string;
 }
 
 interface PanelState {
@@ -47,6 +52,7 @@ interface PanelState {
   readonly timeoutSeconds: number;
   readonly providers: readonly PanelProviderState[];
   readonly languages: readonly { code: string; label: string }[];
+  readonly customModelValue: string;
 }
 
 /**
@@ -166,6 +172,8 @@ export class SettingsPanelProvider implements vscode.WebviewViewProvider {
     const providerStates: PanelProviderState[] = PROVIDERS.map((meta) => {
       const runtime = readProviderConfig(meta.id);
       const available = Boolean(availability[meta.id]);
+      const models = this.catalog.modelsFor(meta.id);
+      const { options, selected } = buildModelOptions(models, runtime.model);
       return {
         id: meta.id,
         label: meta.label,
@@ -181,7 +189,9 @@ export class SettingsPanelProvider implements vscode.WebviewViewProvider {
         authHeader: runtime.auth,
         effort: runtime.effort,
         hasKey: Boolean(keyStatus.get(meta.id)),
-        models: this.catalog.modelsFor(meta.id),
+        models,
+        modelOptions: options,
+        modelSelected: selected,
       };
     });
     return {
@@ -195,6 +205,7 @@ export class SettingsPanelProvider implements vscode.WebviewViewProvider {
       timeoutSeconds: cfg.timeoutSeconds,
       providers: providerStates,
       languages: LANGUAGE_OPTIONS,
+      customModelValue: CUSTOM_MODEL_VALUE,
     };
   }
 
