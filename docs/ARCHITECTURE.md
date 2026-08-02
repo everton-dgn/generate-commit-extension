@@ -23,6 +23,7 @@ providers e as decisões estruturais. Para o modelo de segurança, veja
 | `src/log.ts` | Log somente de metadados, com redação defensiva de segredos. |
 | `src/settingsModel.ts` | Modelo puro do painel: whitelist de chaves, validação de valores e helpers. |
 | `src/settingsPanel.ts` | WebviewView do painel de configurações (formulário inline na sidebar). |
+| `src/modelCatalog.ts` | Catálogo de modelos: busca `/models` de cada provider, cache com TTL e parser tolerante de formatos. |
 | `src/providersRuntime.ts` | Factories dos providers, disponibilidade, status de chaves e validação de chave. |
 | `media/` | JS/CSS do painel (os únicos recursos que a CSP da webview permite). |
 | `src/typings/git.d.ts` | Tipagens oficiais da Git API, vendorizadas da tag 1.126.0 do `microsoft/vscode`. |

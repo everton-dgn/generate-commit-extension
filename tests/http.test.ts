@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { postJson } from '../src/http';
+import { getJson, postJson } from '../src/http';
 import type { ProviderError } from '../src/types';
 
 const OPTS = { timeoutMs: 200, signal: new AbortController().signal };
@@ -90,5 +90,64 @@ describe('postJson', () => {
     await expect(
       postJson('https://x', {}, {}, { timeoutMs: 5000, signal: controller.signal }),
     ).rejects.toMatchObject({ kind: 'cancelled' });
+  });
+});
+
+describe('getJson', () => {
+  beforeEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('parses a JSON 200 response', async () => {
+    vi.stubGlobal('fetch', async () => jsonResponse(200, { data: [{ id: 'm1' }] }));
+    await expect(getJson('https://x/models', {}, OPTS)).resolves.toEqual({
+      data: [{ id: 'm1' }],
+    });
+  });
+
+  it('sends no body and no content-type header on GET', async () => {
+    let seen: { method?: string; headers?: Record<string, string>; body?: unknown } = {};
+    vi.stubGlobal('fetch', async (_url: string, init: typeof seen) => {
+      seen = init;
+      return jsonResponse(200, {});
+    });
+    await getJson('https://x/models', { 'x-api-key': 'K' }, OPTS);
+    expect(seen.method).toBe('GET');
+    expect(seen.body).toBeUndefined();
+    expect(seen.headers?.['content-type']).toBeUndefined();
+    expect(seen.headers?.['x-api-key']).toBe('K');
+  });
+
+  it('sets content-type only when a body is present (POST)', async () => {
+    let seen: { headers?: Record<string, string> } = {};
+    vi.stubGlobal('fetch', async (_url: string, init: typeof seen) => {
+      seen = init;
+      return jsonResponse(200, {});
+    });
+    await postJson('https://x', {}, { a: 1 }, OPTS);
+    expect(seen.headers?.['content-type']).toBe('application/json');
+  });
+
+  it('refuses non-HTTPS URLs', async () => {
+    await expect(getJson('http://x/models', {}, OPTS)).rejects.toMatchObject({ kind: 'network' });
+  });
+
+  it('times out when the response never settles', async () => {
+    vi.stubGlobal(
+      'fetch',
+      (_url: string, init: { signal: AbortSignal }) =>
+        new Promise((_resolve, reject) => {
+          if (init.signal.aborted) {
+            reject(new DOMException('The operation was aborted', 'AbortError'));
+            return;
+          }
+          init.signal.addEventListener('abort', () =>
+            reject(new DOMException('The operation was aborted', 'AbortError')),
+          );
+        }),
+    );
+    await expect(getJson('https://x/models', {}, { ...OPTS, timeoutMs: 50 })).rejects.toMatchObject(
+      { kind: 'timeout' },
+    );
   });
 });

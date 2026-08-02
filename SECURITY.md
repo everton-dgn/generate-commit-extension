@@ -38,11 +38,22 @@ Esse é o único dado que sai da máquina, e estas são as camadas de proteção
 - Armazenadas **somente** em `context.secrets` (SecretStorage do VS Code,
   com suporte a keychain do sistema operacional).
 - Nunca em `settings.json`, nunca em logs, nunca em mensagens de erro.
+- **Escopo `machine` nas URLs sensíveis**: as settings `*.baseUrl` e
+  `anthropicCustom.authHeader` são declaradas com escopo `machine`, então
+  valores vindos de `.vscode/settings.json` de um workspace são ignorados.
+  Sem isso, um repositório malicioso poderia apontar a base URL para um
+  host controlado por terceiros e receber a sua chave na próxima chamada
+  (geração ou catálogo de modelos).
+- O catálogo de modelos (`GET /models` de cada provider) envia a chave
+  apenas ao endpoint do próprio provider, com o header exigido pelo
+  contrato dele (MiniMax lista modelos atrás de `X-Api-Key`, mesmo o
+  endpoint de mensagens aceitando Bearer; verificado em 2026-08-02).
 - A validação de chave usa uma requisição mínima (`max_tokens: 8`). Falha
   de autenticação invalida a chave; respostas do endpoint que não sejam de
   autenticação (limite, créditos, erro de servidor, payload rejeitado)
   confirmam que a chave foi aceita; falhas sem resposta (rede, timeout)
-  deixam a chave não verificada e impedem o salvamento pelo painel.
+  deixam a chave não verificada e impedem o salvamento pelo painel (com
+  opção explícita "Save anyway", logada como não verificada).
 
 ### 4. Transporte e rede
 

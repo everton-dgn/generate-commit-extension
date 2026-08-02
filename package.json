@@ -112,7 +112,8 @@
         "generateCommit.openrouter.baseUrl": {
           "type": "string",
           "default": "https://openrouter.ai/api/v1",
-          "markdownDescription": "Base URL of the OpenAI-compatible OpenRouter API. HTTPS only."
+          "markdownDescription": "Base URL of the OpenAI-compatible OpenRouter API. HTTPS only.",
+          "scope": "machine"
         },
         "generateCommit.kimi.model": {
           "type": "string",
@@ -122,7 +123,8 @@
         "generateCommit.kimi.baseUrl": {
           "type": "string",
           "default": "https://api.moonshot.ai/anthropic",
-          "markdownDescription": "Base URL of the Kimi Anthropic-compatible API (China: `https://api.moonshot.cn/anthropic`). HTTPS only."
+          "markdownDescription": "Base URL of the Kimi Anthropic-compatible API (China: `https://api.moonshot.cn/anthropic`). HTTPS only.",
+          "scope": "machine"
         },
         "generateCommit.glm.model": {
           "type": "string",
@@ -132,7 +134,8 @@
         "generateCommit.glm.baseUrl": {
           "type": "string",
           "default": "https://api.z.ai/api/anthropic",
-          "markdownDescription": "Base URL of the z.ai Anthropic-compatible API. HTTPS only."
+          "markdownDescription": "Base URL of the z.ai Anthropic-compatible API. HTTPS only.",
+          "scope": "machine"
         },
         "generateCommit.minimax.model": {
           "type": "string",
@@ -142,7 +145,8 @@
         "generateCommit.minimax.baseUrl": {
           "type": "string",
           "default": "https://api.minimax.io/anthropic",
-          "markdownDescription": "Base URL of the MiniMax Anthropic-compatible API (China: `https://api.minimaxi.com/anthropic`). HTTPS only."
+          "markdownDescription": "Base URL of the MiniMax Anthropic-compatible API (China: `https://api.minimaxi.com/anthropic`). HTTPS only.",
+          "scope": "machine"
         },
         "generateCommit.anthropicCustom.model": {
           "type": "string",
@@ -152,7 +156,8 @@
         "generateCommit.anthropicCustom.baseUrl": {
           "type": "string",
           "default": "https://api.anthropic.com",
-          "markdownDescription": "Base URL of any Anthropic-compatible endpoint (the client posts to `<baseUrl>/v1/messages`). HTTPS only."
+          "markdownDescription": "Base URL of any Anthropic-compatible endpoint (the client posts to `<baseUrl>/v1/messages`). HTTPS only.",
+          "scope": "machine"
         },
         "generateCommit.anthropicCustom.authHeader": {
           "type": "string",
@@ -161,7 +166,8 @@
             "bearer"
           ],
           "default": "x-api-key",
-          "markdownDescription": "Authentication header style for the custom Anthropic-compatible endpoint: `x-api-key` (Anthropic) or `bearer` (`Authorization: Bearer`)."
+          "markdownDescription": "Authentication header style for the custom Anthropic-compatible endpoint: `x-api-key` (Anthropic) or `bearer` (`Authorization: Bearer`).",
+          "scope": "machine"
         },
         "generateCommit.claudeCli.model": {
           "type": "string",

@@ -99,6 +99,20 @@
     return state.providers.find((p) => p.id === id);
   }
 
+  function modelDatalist(input, models, idSuffix) {
+    if (!models || models.length === 0) return null;
+    const listId = `gc-models-${idSuffix}`;
+    input.setAttribute('list', listId);
+    const datalist = el('datalist');
+    datalist.id = listId;
+    for (const model of models) {
+      const option = el('option');
+      option.value = model;
+      datalist.append(option);
+    }
+    return datalist;
+  }
+
   function renderProviderSection() {
     const section = el('section');
     section.append(el('h2', '', 'Provider'));
@@ -110,7 +124,10 @@
       // Distinct focus identity: the advanced section has a field with the
       // same config key for this provider.
       modelInput.dataset.fkey = `main:${active.id}.model`;
-      section.append(field('Model', modelInput, active.availabilityNote));
+      const modelField = field('Model', modelInput, active.availabilityNote);
+      const datalist = modelDatalist(modelInput, active.models, 'main');
+      if (datalist) modelField.append(datalist);
+      section.append(modelField);
     }
     return section;
   }
@@ -223,7 +240,13 @@
       const opts = options.map((o) => [o, o === '' ? '(provider default)' : o]);
       return field(label, selectInput(fullKey, current, opts));
     }
-    return field(label, textInput(fullKey, current));
+    const input = textInput(fullKey, current);
+    const controlField = field(label, input);
+    if (key === 'model') {
+      const datalist = modelDatalist(input, provider.models, `${provider.id}-adv`);
+      if (datalist) controlField.append(datalist);
+    }
+    return controlField;
   }
 
   function renderAdvancedSection() {

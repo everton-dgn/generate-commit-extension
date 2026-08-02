@@ -93,6 +93,28 @@ export async function postJson(
   if (!url.startsWith('https://')) {
     throw new ProviderError('network', `Refusing non-HTTPS URL: ${url}`);
   }
+  return requestJson(url, { method: 'POST', headers, body }, opts);
+}
+
+/** GETs JSON over HTTPS only (model catalogs and similar endpoints). */
+export async function getJson(
+  url: string,
+  headers: Record<string, string>,
+  opts: HttpOptions,
+): Promise<unknown> {
+  if (!url.startsWith('https://')) {
+    throw new ProviderError('network', `Refusing non-HTTPS URL: ${url}`);
+  }
+  return requestJson(url, { method: 'GET', headers }, opts);
+}
+
+interface RequestInit {
+  readonly method: 'GET' | 'POST';
+  readonly headers: Record<string, string>;
+  readonly body?: unknown;
+}
+
+async function requestJson(url: string, init: RequestInit, opts: HttpOptions): Promise<unknown> {
   // Compose user cancellation and timeout manually instead of AbortSignal.any
   // (Node 20.3+), which older extension-host runtimes do not provide.
   const controller = new AbortController();
@@ -105,10 +127,12 @@ export async function postJson(
     controller.abort();
   }, opts.timeoutMs);
   try {
+    const headers: Record<string, string> = { ...init.headers };
+    if (init.body !== undefined) headers['content-type'] = 'application/json';
     const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', ...headers },
-      body: JSON.stringify(body),
+      method: init.method,
+      headers,
+      body: init.body === undefined ? undefined : JSON.stringify(init.body),
       signal: controller.signal,
     });
     if (!res.ok) {

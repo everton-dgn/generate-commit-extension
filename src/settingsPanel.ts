@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { readAppConfig, readProviderConfig, secretKeyFor } from './config';
 import { logMeta } from './log';
+import { MODELS_TTL_MS, ModelCatalog } from './modelCatalog';
 import { PROVIDERS } from './providers/registry';
 import {
   collectAvailability,
@@ -32,6 +33,7 @@ interface PanelProviderState {
   readonly authHeader: string;
   readonly effort: string;
   readonly hasKey: boolean;
+  readonly models: readonly string[];
 }
 
 interface PanelState {
@@ -56,8 +58,21 @@ interface PanelState {
 export class SettingsPanelProvider implements vscode.WebviewViewProvider {
   private view?: vscode.WebviewView;
   private readonly listener: vscode.Disposable;
+  private readonly catalog: ModelCatalog;
+  private readonly catalogAbort = new AbortController();
+  private refreshTimer?: ReturnType<typeof setInterval>;
 
   constructor(private readonly context: vscode.ExtensionContext) {
+    this.catalog = new ModelCatalog({
+      getApiKey: async (id) => context.secrets.get(secretKeyFor(id)),
+      getConfig: (id) => {
+        const cfg = readProviderConfig(id);
+        return { baseUrl: cfg.baseUrl, auth: cfg.auth };
+      },
+      now: () => Date.now(),
+      timeoutMs: 10_000,
+      signal: this.catalogAbort.signal,
+    });
     this.listener = vscode.workspace.onDidChangeConfiguration((event) => {
       if (event.affectsConfiguration(SECTION)) {
         this.pushState().catch((err: unknown) => {
@@ -69,6 +84,11 @@ export class SettingsPanelProvider implements vscode.WebviewViewProvider {
 
   dispose(): void {
     this.listener.dispose();
+    this.catalogAbort.abort();
+    if (this.refreshTimer !== undefined) {
+      clearInterval(this.refreshTimer);
+      this.refreshTimer = undefined;
+    }
   }
 
   resolveWebviewView(view: vscode.WebviewView): void {
@@ -116,6 +136,24 @@ export class SettingsPanelProvider implements vscode.WebviewViewProvider {
       undefined,
       this.context.subscriptions,
     );
+    // Fetch live model catalogs in the background; the form re-renders with
+    // suggestions when they arrive (failures keep free-text-only fields).
+    this.refreshCatalogs();
+    // Keep catalogs fresh while the panel is open; the TTL gate in refresh()
+    // makes this a no-op until an entry actually expires.
+    this.refreshTimer = setInterval(() => this.refreshCatalogs(), MODELS_TTL_MS);
+  }
+
+  private refreshCatalogs(): void {
+    this.catalog
+      .refreshAll(PROVIDERS.map((meta) => meta.id))
+      .then((changed) => {
+        if (changed) return this.pushState();
+        return undefined;
+      })
+      .catch((err: unknown) => {
+        logMeta('catalog.error', { detail: err instanceof Error ? err.name : 'unknown' });
+      });
   }
 
   private async buildState(): Promise<PanelState> {
@@ -143,6 +181,7 @@ export class SettingsPanelProvider implements vscode.WebviewViewProvider {
         authHeader: runtime.auth,
         effort: runtime.effort,
         hasKey: Boolean(keyStatus.get(meta.id)),
+        models: this.catalog.modelsFor(meta.id),
       };
     });
     return {
@@ -244,7 +283,20 @@ export class SettingsPanelProvider implements vscode.WebviewViewProvider {
       reason: validation.reason,
       allowForce: !validation.ok,
     });
-    if (validation.ok) await this.pushState();
+    if (validation.ok) {
+      await this.pushState();
+      // A new key can unlock the provider's model catalog: fetch it now
+      // (forced, bypassing the TTL) instead of waiting for the next open.
+      this.catalog
+        .refresh(provider, true)
+        .then((changed) => {
+          if (changed) return this.pushState();
+          return undefined;
+        })
+        .catch((err: unknown) => {
+          logMeta('catalog.error', { detail: err instanceof Error ? err.name : 'unknown' });
+        });
+    }
   }
 
   private renderHtml(webview: vscode.Webview): string {
