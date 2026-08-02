@@ -30,16 +30,6 @@
         "category": "Generate Commit"
       },
       {
-        "command": "generateCommit.switchProvider",
-        "title": "Switch Provider / Model",
-        "category": "Generate Commit"
-      },
-      {
-        "command": "generateCommit.configure",
-        "title": "Configure API Key",
-        "category": "Generate Commit"
-      },
-      {
         "command": "generateCommit.settings",
         "title": "Settings",
         "category": "Generate Commit"
@@ -51,13 +41,6 @@
           "command": "generateCommit.generate",
           "when": "scmProvider == git",
           "group": "inline"
-        }
-      ],
-      "scm/title": [
-        {
-          "command": "generateCommit.switchProvider",
-          "when": "scmProvider == git",
-          "group": "2_actions"
         }
       ]
     },

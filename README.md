@@ -36,11 +36,10 @@ Em modo de desenvolvimento (F5), a proposta funciona sem flags.
 - Troca rápida de provider/modelo pelo comando `Generate Commit: Switch
   Provider / Model`.
 - Painel **Generate Commit** na barra lateral esquerda (ícone de
-  estrelinhas): todas as configurações em árvore com o valor atual de cada
-  uma (provider, chave, idioma, limites, prompt customizado, fallback,
-  timeout, e um nó avançado por provider com baseUrl, authHeader e esforço),
-  edição por clique, sem editar JSON. O mesmo menu existe no comando
-  `Generate Commit: Settings`.
+  estrelinhas): todas as configurações em um formulário inline na própria
+  sidebar, com valor atual de cada uma (provider, chaves com status, idioma,
+  limites, prompt customizado, fallback, timeout e seções avançadas por
+  provider), sem nenhuma janela flutuante e sem editar JSON.
 - Primeiro uso guiado: sem nenhum provider disponível, o fluxo abre a
   configuração (escolha do provider, chave mascarada, validação rápida,
   salvamento no Secret Storage).
@@ -96,9 +95,9 @@ chave (campo mascarado), aguarde a validação rápida e pronto. A chave fica em
 ## Settings
 
 Todas as opções abaixo também podem ser alteradas pela interface, no painel
-**Generate Commit** da barra lateral ou no comando `Generate Commit:
-Settings` (menu com valor atual, QuickPicks e campos validados), além da
-tela de Settings do editor (filtre por `generateCommit`).
+**Generate Commit** da barra lateral (formulário inline com validação; o
+comando `Generate Commit: Settings` abre o painel), além da tela de
+Settings do editor (filtre por `generateCommit`).
 
 | Setting | Default | Descrição |
 |---------|---------|-----------|
@@ -143,8 +142,13 @@ tela de Settings do editor (filtre por `generateCommit`).
   relido antes de preencher a caixa e o resultado é descartado se o stage
   mudou durante a geração.
 - **Zero telemetria** e zero chamadas a serviços além do provider escolhido.
-- Sem webview e sem a API `vscode.lm` (que depende do Copilot e não existe
-  no VSCodium).
+- **Webview do painel travada**: o formulário de configurações roda numa
+  WebviewView com CSP `default-src 'none'` (só arquivos locais do bundle,
+  sem conteúdo remoto, sem script/estilo inline), valores renderizados via
+  DOM seguro (sem `innerHTML` com dados do usuário), mensagens validadas
+  contra uma whitelist de chaves antes de qualquer `config.update` e
+  segredos nunca renderizados no DOM (campos de senha só escrevem).
+- Sem a API `vscode.lm` (que depende do Copilot e não existe no VSCodium).
 
 ## Desenvolvimento
 
