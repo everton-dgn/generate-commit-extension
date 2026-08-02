@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { readAppConfig, readProviderConfig, secretKeyFor } from './config';
 import { logMeta } from './log';
+import { ModelCatalog } from './modelCatalog';
 import { PROVIDERS } from './providers/registry';
 import {
   collectAvailability,
@@ -32,6 +33,7 @@ interface PanelProviderState {
   readonly authHeader: string;
   readonly effort: string;
   readonly hasKey: boolean;
+  readonly models: readonly string[];
 }
 
 interface PanelState {
@@ -56,8 +58,18 @@ interface PanelState {
 export class SettingsPanelProvider implements vscode.WebviewViewProvider {
   private view?: vscode.WebviewView;
   private readonly listener: vscode.Disposable;
+  private readonly catalog: ModelCatalog;
 
   constructor(private readonly context: vscode.ExtensionContext) {
+    this.catalog = new ModelCatalog({
+      getApiKey: async (id) => context.secrets.get(secretKeyFor(id)),
+      getConfig: (id) => {
+        const cfg = readProviderConfig(id);
+        return { baseUrl: cfg.baseUrl, auth: cfg.auth };
+      },
+      now: () => Date.now(),
+      timeoutMs: 10_000,
+    });
     this.listener = vscode.workspace.onDidChangeConfiguration((event) => {
       if (event.affectsConfiguration(SECTION)) {
         this.pushState().catch((err: unknown) => {
@@ -116,6 +128,17 @@ export class SettingsPanelProvider implements vscode.WebviewViewProvider {
       undefined,
       this.context.subscriptions,
     );
+    // Fetch live model catalogs in the background; the form re-renders with
+    // suggestions when they arrive (failures keep free-text-only fields).
+    this.catalog
+      .refreshAll(PROVIDERS.map((meta) => meta.id))
+      .then((changed) => {
+        if (changed) return this.pushState();
+        return undefined;
+      })
+      .catch((err: unknown) => {
+        logMeta('catalog.error', { detail: err instanceof Error ? err.name : 'unknown' });
+      });
   }
 
   private async buildState(): Promise<PanelState> {
@@ -143,6 +166,7 @@ export class SettingsPanelProvider implements vscode.WebviewViewProvider {
         authHeader: runtime.auth,
         effort: runtime.effort,
         hasKey: Boolean(keyStatus.get(meta.id)),
+        models: this.catalog.modelsFor(meta.id),
       };
     });
     return {

@@ -40,6 +40,10 @@ Em modo de desenvolvimento (F5), a proposta funciona sem flags.
   sidebar, com valor atual de cada uma (provider, chaves com status, idioma,
   limites, prompt customizado, fallback, timeout e seções avançadas por
   provider), sem nenhuma janela flutuante e sem editar JSON.
+- **Sugestões de modelo ao vivo**: o campo Model traz a lista atual do
+  provider (buscada no endpoint de modelos dele a cada hora, com fallback
+  silencioso para texto livre). Modelo novo lançado pelo provider aparece
+  sozinho nas sugestões; texto livre continua valendo.
 - Primeiro uso guiado: sem nenhum provider disponível, o fluxo abre a
   configuração (escolha do provider, chave mascarada, validação rápida,
   salvamento no Secret Storage).
@@ -85,6 +89,12 @@ Notas:
 - O provider "Anthropic (custom)" cobre qualquer endpoint compatível com a
   Messages API: edite base URL, modelo e o estilo de autenticação
   (`x-api-key` ou `bearer`).
+- As sugestões do campo Model vêm do endpoint de modelos de cada provider
+  (`/models`, verificado em 2026-08-02: OpenRouter sem chave; Kimi, GLM,
+  MiniMax e Anthropic com a chave configurada), com cache de 1 hora. Se a
+  busca falhar (sem chave, rede, endpoint custom sem listagem), o campo
+  segue texto livre sem erro. Claude CLI sugere os aliases estáticos
+  (`fable`, `opus`, `sonnet`, `haiku`); Codex CLI segue texto livre.
 
 ### Configurar uma chave de API
 

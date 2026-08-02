@@ -4,6 +4,14 @@ Todas as mudanças notáveis deste projeto são documentadas aqui, seguindo o
 espírito do [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e
 versionamento semântico.
 
+## [Unreleased]
+
+### Adicionado
+
+- Sugestões de modelo ao vivo no campo Model do painel: a lista é buscada
+  no endpoint de modelos de cada provider (cache de 1 hora) e modelos novos
+  aparecem automaticamente, mantendo texto livre como fallback.
+
 ## [0.1.0] - 2026-08-02
 
 Primeira versão funcional.
