@@ -34,6 +34,12 @@ describe('isValidBaseUrl', () => {
     expect(isValidBaseUrl('http://api.example.com')).toBe(false);
     expect(isValidBaseUrl('api.example.com')).toBe(false);
   });
+
+  it('rejects malformed HTTPS values', () => {
+    expect(isValidBaseUrl('https://')).toBe(false);
+    expect(isValidBaseUrl('https://?x=1')).toBe(false);
+    expect(isValidBaseUrl('https:// espaço')).toBe(false);
+  });
 });
 
 describe('advancedItemsFor', () => {

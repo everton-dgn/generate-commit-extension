@@ -208,6 +208,15 @@ export async function settingsCommand(): Promise<void> {
       placeHolder: 'Generate Commit settings (Esc to close)',
     });
     if (!pick) return;
-    await handleSettingsItem(pick.id);
+    try {
+      await handleSettingsItem(pick.id);
+    } catch (err) {
+      // config.update can reject (policy-locked or invalid values): keep the
+      // menu usable and surface the failure instead of crashing the command.
+      logMeta('settings.error', { detail: err instanceof Error ? err.name : 'unknown' });
+      void vscode.window.showErrorMessage(
+        `Generate Commit: failed to apply the setting (${err instanceof Error ? err.message : String(err)})`,
+      );
+    }
   }
 }

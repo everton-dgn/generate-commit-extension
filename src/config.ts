@@ -89,9 +89,18 @@ function hostOnly(url: string): string {
   }
 }
 
+function isHttpsUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === 'https:' && parsed.hostname.length > 0;
+  } catch {
+    return false;
+  }
+}
+
 function httpsOnly(url: string, fallback: string, onInvalid: (message: string) => void): string {
   const trimmed = url.trim().replace(/\/+$/, '');
-  if (trimmed.startsWith('https://')) return trimmed;
+  if (isHttpsUrl(trimmed)) return trimmed;
   // Host only: the raw URL may embed credentials that must not reach the log.
   if (trimmed)
     onInvalid(`Ignoring non-HTTPS base URL (host: ${hostOnly(url)}); HTTPS is required.`);

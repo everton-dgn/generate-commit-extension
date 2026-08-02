@@ -9,10 +9,16 @@ export function parseIntSetting(input: string, min: number): number | undefined 
   return value;
 }
 
-/** Empty resets to the provider default; otherwise HTTPS is required. */
+/** Empty resets to the provider default; otherwise a valid HTTPS URL is required. */
 export function isValidBaseUrl(input: string): boolean {
   const trimmed = input.trim();
-  return trimmed === '' || trimmed.startsWith('https://');
+  if (trimmed === '') return true;
+  try {
+    const url = new URL(trimmed);
+    return url.protocol === 'https:' && url.hostname.length > 0;
+  } catch {
+    return false;
+  }
 }
 
 export interface LanguageOption {
