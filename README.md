@@ -37,6 +37,9 @@ Em modo de desenvolvimento (F5), a proposta funciona sem flags.
   chamada HTTP ou mata o processo do CLI.
 - Troca rápida de provider/modelo pelo comando `Generate Commit: Switch
   Provider / Model`.
+- Todas as configurações pela UI: o comando `Generate Commit: Settings`
+  abre um menu com cada opção e seu valor atual (idioma, limites, prompt
+  customizado, timeout, base URLs, esforço dos CLIs), sem editar JSON.
 - Primeiro uso guiado: sem nenhum provider disponível, o fluxo abre a
   configuração (escolha do provider, chave mascarada, validação rápida,
   salvamento no Secret Storage).
@@ -90,6 +93,10 @@ chave (campo mascarado), aguarde a validação rápida e pronto. A chave fica em
 `context.secrets` (Secret Storage do VS Code), **nunca** em `settings.json`.
 
 ## Settings
+
+Todas as opções abaixo também podem ser alteradas pela interface, no comando
+`Generate Commit: Settings` (menu com valor atual, QuickPicks e campos
+validados), além da tela de Settings do editor (filtre por `generateCommit`).
 
 | Setting | Default | Descrição |
 |---------|---------|-----------|

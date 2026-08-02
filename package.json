@@ -23,7 +23,10 @@
       {
         "command": "generateCommit.generate",
         "title": "Generate Commit Message",
-        "icon": "$(sparkle)",
+        "icon": {
+          "light": "images/icon-light.svg",
+          "dark": "images/icon-dark.svg"
+        },
         "category": "Generate Commit"
       },
       {
@@ -34,6 +37,11 @@
       {
         "command": "generateCommit.configure",
         "title": "Configure API Key",
+        "category": "Generate Commit"
+      },
+      {
+        "command": "generateCommit.settings",
+        "title": "Settings",
         "category": "Generate Commit"
       }
     ],
@@ -53,6 +61,11 @@
         },
         {
           "command": "generateCommit.switchProvider",
+          "when": "scmProvider == git",
+          "group": "2_actions"
+        },
+        {
+          "command": "generateCommit.settings",
           "when": "scmProvider == git",
           "group": "2_actions"
         }

@@ -16,6 +16,7 @@ import { createCodexCliProvider } from './providers/codexCli';
 import { createOpenRouterProvider } from './providers/openrouter';
 import { PROVIDERS, providerMeta, resolveProviderChoice } from './providers/registry';
 import { type Finding, SECRET_TYPE_LABELS, scanDiff } from './secretsScan';
+import { settingsCommand } from './settingsUi';
 import { type GenerateRequest, type Provider, ProviderError, type ProviderId } from './types';
 import type { Repository } from './typings/git';
 
@@ -28,6 +29,7 @@ export function registerCommands(context: vscode.ExtensionContext): void {
       switchProviderCommand(context),
     ),
     vscode.commands.registerCommand('generateCommit.configure', () => configureCommand(context)),
+    vscode.commands.registerCommand('generateCommit.settings', () => settingsCommand()),
   );
 }
 
