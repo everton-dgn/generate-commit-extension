@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import type { API, GitExtension, Repository } from './typings/git';
 
-/** Returns the built-in git extension API v1, activating the extension if needed. */
+/** Retorna a API v1 da extensão git nativa, ativando a extensão se necessário. */
 export async function getGitApi(): Promise<API> {
   const extension = vscode.extensions.getExtension<GitExtension>('vscode.git');
   if (!extension) {
@@ -21,9 +21,9 @@ function extractRootUri(arg: unknown): vscode.Uri | undefined {
 }
 
 /**
- * Resolves the target repository: from the command argument (rootUri passed by
- * the scm/inputBox menu, or a SourceControl from scm/title), then the single
- * open repository, otherwise a QuickPick.
+ * Resolve o repositório alvo: a partir do argumento do comando (rootUri
+ * passado pelo menu scm/inputBox, ou um SourceControl do scm/title), depois o
+ * único repositório aberto, caso contrário um QuickPick.
  */
 export async function resolveRepository(api: API, arg: unknown): Promise<Repository | undefined> {
   const repositories = api.repositories;
@@ -68,7 +68,7 @@ export async function getUnstagedDiff(repo: Repository): Promise<string> {
 
 const RECENT_COMMITS_COUNT = 10;
 
-/** Recent commit subjects as style context; empty on unborn HEAD or API errors. */
+/** Assuntos de commits recentes como contexto de estilo; vazio em HEAD unborn ou erros de API. */
 export async function getRecentCommitSubjects(repo: Repository): Promise<string[]> {
   try {
     const commits = await repo.log({ maxEntries: RECENT_COMMITS_COUNT });

@@ -56,10 +56,11 @@ interface PanelState {
 }
 
 /**
- * Sidebar settings panel: a strictly sandboxed WebviewView (CSP default-src
- * 'none', only bundled local media, no remote content, no inline code).
- * Messages from the webview are validated against a whitelist before any
- * config.update, and secret values never flow back into the DOM.
+ * Painel de configurações da barra lateral: uma WebviewView estritamente
+ * isolada em sandbox (CSP default-src 'none', apenas mídia local empacotada,
+ * sem conteúdo remoto, sem código inline). Mensagens da webview são validadas
+ * contra uma whitelist antes de qualquer config.update, e valores de segredos
+ * nunca fluem de volta para o DOM.
  */
 export class SettingsPanelProvider implements vscode.WebviewViewProvider {
   private view?: vscode.WebviewView;
@@ -114,7 +115,7 @@ export class SettingsPanelProvider implements vscode.WebviewViewProvider {
     view.webview.onDidReceiveMessage(
       (message: unknown) => {
         this.handleMessage(message).catch((err: unknown) => {
-          // Never leave the form hanging: report unexpected failures back.
+          // Nunca deixar o formulário travado: reportar falhas inesperadas de volta.
           logMeta('panel.messageError', { detail: err instanceof Error ? err.name : 'unknown' });
           const msg = (typeof message === 'object' && message !== null ? message : {}) as {
             type?: unknown;
@@ -142,11 +143,13 @@ export class SettingsPanelProvider implements vscode.WebviewViewProvider {
       undefined,
       this.context.subscriptions,
     );
-    // Fetch live model catalogs in the background; the form re-renders with
-    // suggestions when they arrive (failures keep free-text-only fields).
+    // Busca os catálogos de modelos ao vivo em segundo plano; o formulário se
+    // re-renderiza com sugestões quando eles chegam (falhas mantêm os campos
+    // somente de texto livre).
     this.refreshCatalogs();
-    // Keep catalogs fresh while the panel is open; the TTL gate in refresh()
-    // makes this a no-op until an entry actually expires.
+    // Mantém os catálogos atualizados enquanto o painel estiver aberto; o
+    // portão de TTL em refresh() torna isso um no-op até que uma entrada
+    // realmente expire.
     this.refreshTimer = setInterval(() => this.refreshCatalogs(), MODELS_TTL_MS);
   }
 
@@ -213,8 +216,9 @@ export class SettingsPanelProvider implements vscode.WebviewViewProvider {
 
   private async pushState(): Promise<void> {
     if (!this.view) return;
-    // buildState is slow (availability probing): only the latest call may
-    // publish, so rapid config changes never render a stale snapshot.
+    // buildState é lento (sondagem de disponibilidade): somente a chamada
+    // mais recente pode publicar, para que mudanças rápidas de configuração
+    // nunca renderizem um snapshot desatualizado.
     const seq = ++this.stateSeq;
     const state = await this.buildState();
     if (!this.view || seq !== this.stateSeq) return;
@@ -232,7 +236,7 @@ export class SettingsPanelProvider implements vscode.WebviewViewProvider {
       const result = validateSettingValue(message.key, message.value);
       if (!result.ok) {
         logMeta('settings.rejected', { key: message.key });
-        // Tell the form so the field reverts instead of silently diverging.
+        // Avisa o formulário para que o campo reverta em vez de divergir silenciosamente.
         if (this.view) {
           await this.view.webview.postMessage({
             type: 'updateResult',
@@ -266,8 +270,9 @@ export class SettingsPanelProvider implements vscode.WebviewViewProvider {
       });
       return;
     }
-    // Force = explicit user override after a failed validation (flaky
-    // network or a down endpoint must not block saving entirely).
+    // Force = override explícito do usuário após uma validação malsucedida
+    // (rede instável ou endpoint fora do ar não devem bloquear totalmente
+    // o salvamento).
     if (force) {
       await this.context.secrets.store(secretKeyFor(provider), key);
       logMeta('secrets.stored', { provider, validated: false });
@@ -296,8 +301,9 @@ export class SettingsPanelProvider implements vscode.WebviewViewProvider {
     });
     if (validation.ok) {
       await this.pushState();
-      // A new key can unlock the provider's model catalog: fetch it now
-      // (forced, bypassing the TTL) instead of waiting for the next open.
+      // Uma nova chave pode desbloquear o catálogo de modelos do provider:
+      // busca-o agora (forçado, ignorando o TTL) em vez de esperar a próxima
+      // abertura.
       this.catalog
         .refresh(provider, true)
         .then((changed) => {

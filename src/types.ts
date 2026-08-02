@@ -12,15 +12,15 @@ export type ProviderKind = 'http' | 'cli';
 export interface GenerateRequest {
   readonly systemPrompt: string;
   readonly userPrompt: string;
-  /** Resolved model id; empty string means "provider/CLI default". */
+  /** Id do modelo resolvido; string vazia significa "padrão do provider/CLI". */
   readonly model: string;
-  /** Reasoning effort for CLI providers; empty string means "CLI default". */
+  /** Esforço de raciocínio para providers CLI; string vazia significa "padrão do CLI". */
   readonly effort: string;
-  /** Output cap for HTTP providers; defaults to 512. */
+  /** Teto de saída para providers HTTP; padrão 512. */
   readonly maxTokens?: number;
   readonly timeoutMs: number;
   readonly signal: AbortSignal;
-  /** Working directory for CLI providers (repo root). */
+  /** Diretório de trabalho para providers CLI (raiz do repositório). */
   readonly cwd?: string;
 }
 
@@ -48,7 +48,7 @@ export class ProviderError extends Error {
   constructor(
     readonly kind: ProviderErrorKind,
     message: string,
-    /** Actionable hint shown to the user alongside the message. */
+    /** Dica acionável exibida ao usuário junto com a mensagem. */
     readonly action?: string,
   ) {
     super(message);

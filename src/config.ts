@@ -45,7 +45,7 @@ export interface ProviderRuntimeConfig {
   readonly effort: string;
 }
 
-/** Mirrors the defaults declared in package.json. */
+/** Espelha os defaults declarados no package.json. */
 const DEFAULTS: Readonly<Record<ProviderId, ProviderRuntimeConfig>> = {
   openrouter: {
     model: 'google/gemini-2.5-flash-lite',
@@ -101,7 +101,7 @@ function isHttpsUrl(url: string): boolean {
 function httpsOnly(url: string, fallback: string, onInvalid: (message: string) => void): string {
   const trimmed = url.trim().replace(/\/+$/, '');
   if (isHttpsUrl(trimmed)) return trimmed;
-  // Host only: the raw URL may embed credentials that must not reach the log.
+  // Somente o host: a URL bruta pode conter credenciais que não devem chegar ao log.
   if (trimmed)
     onInvalid(`Ignoring non-HTTPS base URL (host: ${hostOnly(url)}); HTTPS is required.`);
   return fallback;

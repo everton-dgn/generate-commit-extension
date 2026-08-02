@@ -23,9 +23,10 @@ const MAX_STDOUT_CHARS = 2_000_000;
 const MAX_STDERR_CHARS = 200_000;
 
 /**
- * Runs a CLI with the prompt on stdin. Cancellation and timeout terminate the
- * whole process group (SIGTERM, then SIGKILL after a grace period), so
- * subprocesses spawned by the CLI do not outlive the request.
+ * Executa uma CLI com o prompt no stdin. Cancelamento e timeout encerram o
+ * grupo de processos inteiro (SIGTERM, depois SIGKILL após um período de
+ * tolerância), para que subprocessos criados pela CLI não sobrevivam à
+ * requisição.
  */
 export async function runCli(opts: RunCliOptions): Promise<CliResult> {
   return new Promise((resolve, reject) => {
@@ -52,7 +53,7 @@ export async function runCli(opts: RunCliOptions): Promise<CliResult> {
         try {
           child.kill(signal);
         } catch {
-          // already gone
+          // já terminou
         }
       }
     };
@@ -96,10 +97,10 @@ export async function runCli(opts: RunCliOptions): Promise<CliResult> {
       finish(() => resolve({ code, stdout, stderr, timedOut, cancelled }));
     });
     child.stdin.on('error', () => {
-      // EPIPE: the child exited before consuming the prompt; handled by close.
+      // EPIPE: o filho saiu antes de consumir o prompt; tratado pelo close.
     });
-    // end() queues the whole payload and lets the stream drain it, so large
-    // prompts are delivered without manual backpressure handling.
+    // end() enfileira o payload inteiro e deixa o stream drená-lo, então
+    // prompts grandes são entregues sem tratamento manual de backpressure.
     child.stdin.end(opts.stdin, 'utf8');
   });
 }
@@ -127,8 +128,9 @@ const KNOWN_CLI_ERRORS: readonly { pattern: RegExp; label: string }[] = [
 ];
 
 /**
- * Maps raw CLI stderr to a short, safe label from a closed list. Raw stderr
- * never reaches logs or UI: it can echo the prompt (the diff) or secrets.
+ * Mapeia o stderr bruto da CLI para um rótulo curto e seguro de uma lista
+ * fechada. O stderr bruto nunca chega aos logs nem à UI: pode ecoar o prompt
+ * (o diff) ou segredos.
  */
 export function classifyCliError(stderr: string): string | undefined {
   for (const { pattern, label } of KNOWN_CLI_ERRORS) {

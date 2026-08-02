@@ -8,7 +8,7 @@ export interface HttpOptions {
 
 const MAX_ERROR_BODY_CHARS = 300;
 
-/** Maps HTTP status codes to distinct, actionable provider errors. */
+/** Mapeia códigos de status HTTP para erros de provider distintos e acionáveis. */
 export function mapHttpError(
   status: number,
   detail: string,
@@ -59,8 +59,9 @@ export function mapHttpError(
 }
 
 /**
- * Extracts a short, redacted detail from an error body. Anything matching the
- * known secret patterns is replaced before the text reaches UI or logs.
+ * Extrai um detalhe curto e mascarado de um corpo de erro. Qualquer trecho que
+ * corresponda aos padrões de segredo conhecidos é substituído antes de o texto
+ * chegar à UI ou aos logs.
  */
 async function readErrorDetail(res: Response): Promise<string> {
   try {
@@ -83,7 +84,7 @@ async function readErrorDetail(res: Response): Promise<string> {
   }
 }
 
-/** POSTs JSON over HTTPS only, with timeout and external cancellation. */
+/** Faz POST de JSON apenas sobre HTTPS, com timeout e cancelamento externo. */
 export async function postJson(
   url: string,
   headers: Record<string, string>,
@@ -96,7 +97,7 @@ export async function postJson(
   return requestJson(url, { method: 'POST', headers, body }, opts);
 }
 
-/** GETs JSON over HTTPS only (model catalogs and similar endpoints). */
+/** Faz GET de JSON apenas sobre HTTPS (catálogos de modelos e endpoints similares). */
 export async function getJson(
   url: string,
   headers: Record<string, string>,
@@ -115,8 +116,9 @@ interface RequestInit {
 }
 
 async function requestJson(url: string, init: RequestInit, opts: HttpOptions): Promise<unknown> {
-  // Compose user cancellation and timeout manually instead of AbortSignal.any
-  // (Node 20.3+), which older extension-host runtimes do not provide.
+  // Compõe o cancelamento do usuário e o timeout manualmente em vez de
+  // AbortSignal.any (Node 20.3+), que runtimes de extension-host mais antigos
+  // não fornecem.
   const controller = new AbortController();
   let timedOut = false;
   const onUserAbort = (): void => controller.abort();

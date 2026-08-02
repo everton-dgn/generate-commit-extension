@@ -139,7 +139,7 @@ describe('provider generate/isAvailable', () => {
     const { createClaudeCliProvider } = await import('../src/providers/claudeCli');
     const provider = createClaudeCliProvider({ getConfig: () => ({ model: '', effort: '' }) });
     const err = await provider.generate(REQ).catch((e: unknown) => e);
-    // vi.resetModules() breaks cross-registry instanceof; assert structurally.
+    // vi.resetModules() quebra o instanceof entre registros; verifica estruturalmente.
     expect((err as Error).name).toBe('ProviderError');
     expect((err as ProviderError).kind).toBe('cli');
     expect((err as ProviderError).message).not.toContain(secret);

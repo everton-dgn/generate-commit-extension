@@ -13,7 +13,7 @@ function onInvalidConfig(message: string): void {
   void vscode.window.showWarningMessage(`Generate Commit: ${message}`);
 }
 
-/** Instantiates every provider with its live config/secrets accessors. */
+/** Instancia todos os providers com seus accessors de config/segredos ao vivo. */
 export function createProviders(context: vscode.ExtensionContext): Map<ProviderId, Provider> {
   const secrets = context.secrets;
   const getApiKey = (id: ProviderId) => async () => secrets.get(secretKeyFor(id));
@@ -78,7 +78,7 @@ export interface KeyStatus {
   readonly hasKey: boolean;
 }
 
-/** Which key-backed providers have a key stored (never exposes values). */
+/** Quais providers baseados em chave têm uma chave armazenada (nunca expõe valores). */
 export async function collectKeyStatus(context: vscode.ExtensionContext): Promise<KeyStatus[]> {
   const result: KeyStatus[] = [];
   for (const meta of PROVIDERS) {
@@ -95,10 +95,10 @@ export interface KeyValidation {
 }
 
 /**
- * Validates a candidate API key with a minimal request. Only authentication
- * failures reject the key: any response from the endpoint (billing, rate
- * limit, server error, even a rejected payload) proves the key was accepted,
- * while connectivity errors prove nothing.
+ * Valida uma chave de API candidata com uma requisição mínima. Apenas falhas
+ * de autenticação rejeitam a chave: qualquer resposta do endpoint (cobrança,
+ * rate limit, erro de servidor, até um payload rejeitado) prova que a chave
+ * foi aceita, enquanto erros de conectividade não provam nada.
  */
 export async function validateApiKey(id: ProviderId, apiKey: string): Promise<KeyValidation> {
   try {

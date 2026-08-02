@@ -80,7 +80,7 @@ describe('filterFileDiffs', () => {
   });
 
   it('measures the limit in bytes, not UTF-16 units', () => {
-    // 4-byte emoji: the chunk is short in .length but exceeds the byte limit.
+    // Emoji de 4 bytes: o chunk é curto em .length, mas excede o limite em bytes.
     const emoji = chunk('src/emoji.ts', [`const s = "${'😀'.repeat(400)}";`]);
     const files = splitDiffByFile(emoji);
     const chunkLength = files[0]?.chunk.length ?? 0;

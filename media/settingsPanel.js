@@ -113,9 +113,9 @@
     return datalist;
   }
 
-  // Free-text mode is keyed by the CONFIG key on purpose: the main and
-  // advanced model controls of a provider edit the same setting, so both
-  // switch together and stay consistent.
+  // O modo de texto livre é indexado pela chave de CONFIG intencionalmente: os
+  // controles de modelo principal e avançado de um provider editam a mesma
+  // configuração, então os dois alternam juntos e ficam consistentes.
   const customMode = {};
 
   function modelControl(provider, key, idSuffix, fkey) {
@@ -151,8 +151,8 @@
     select.addEventListener('change', () => {
       if (select.value === state.customModelValue) {
         customMode[key] = true;
-        // Blur before re-rendering: otherwise the focus restore would plant
-        // the sentinel value into the new free-text input.
+        // Tira o foco antes de re-renderizar: caso contrário, a restauração de
+        // foco inseriria o valor sentinela no novo input de texto livre.
         select.blur();
         render();
         return;
@@ -284,8 +284,8 @@
       return field(label, selectInput(fullKey, current, opts));
     }
     if (key === 'model') {
-      // Distinct focus identity: the main model field of this provider uses
-      // the same config key, so the advanced control needs its own fkey.
+      // Identidade de foco distinta: o campo de modelo principal deste provider
+      // usa a mesma chave de configuração, então o controle avançado precisa do seu próprio fkey.
       return field(label, modelControl(provider, fullKey, `${provider.id}-adv`, `adv:${fullKey}`));
     }
     return field(label, textInput(fullKey, current));

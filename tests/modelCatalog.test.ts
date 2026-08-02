@@ -122,8 +122,8 @@ describe('ModelCatalog', () => {
     expect(catalog.modelsFor('minimax')).toEqual(['MiniMax-M3', 'MiniMax-M2.5']);
     const [url, headers] = getJsonMock.mock.calls[0] as [string, Record<string, string>];
     expect(url).toBe('https://api.minimax.io/anthropic/v1/models');
-    // The models endpoint requires X-Api-Key even though the messages
-    // endpoint accepts Bearer (verified 2026-08-02).
+    // O endpoint de modelos exige X-Api-Key, embora o endpoint de mensagens
+    // aceite Bearer (verificado em 2026-08-02).
     expect(headers['x-api-key']).toBe('KEY');
     expect(headers.authorization).toBeUndefined();
     expect(headers['anthropic-version']).toBe('2023-06-01');
