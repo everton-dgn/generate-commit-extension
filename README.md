@@ -40,10 +40,11 @@ Em modo de desenvolvimento (F5), a proposta funciona sem flags.
   sidebar, com valor atual de cada uma (provider, chaves com status, idioma,
   limites, prompt customizado, fallback, timeout e seções avançadas por
   provider), sem nenhuma janela flutuante e sem editar JSON.
-- **Sugestões de modelo ao vivo**: o campo Model traz a lista atual do
-  provider (buscada no endpoint de modelos dele a cada hora, com fallback
-  silencioso para texto livre). Modelo novo lançado pelo provider aparece
-  sozinho nas sugestões; texto livre continua valendo.
+- **Sugestões de modelo ao vivo**: o campo Model mostra a lista completa
+  atual do provider (buscada no endpoint de modelos dele a cada hora, com
+  fallback silencioso para texto livre). Modelo novo lançado pelo provider
+  aparece sozinho na lista; a opção "Custom…" permite digitar um ID fora
+  dela.
 - Primeiro uso guiado: sem nenhum provider disponível, o fluxo abre a
   configuração (escolha do provider, chave mascarada, validação rápida,
   salvamento no Secret Storage).

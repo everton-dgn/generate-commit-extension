@@ -191,3 +191,32 @@ describe('parseMessage', () => {
     });
   });
 });
+
+describe('buildModelOptions', () => {
+  it('lists every catalog model and appends the Custom sentinel', async () => {
+    const { buildModelOptions, CUSTOM_MODEL_VALUE } = await import('../src/settingsModel');
+    const { options, selected } = buildModelOptions(['a', 'b'], 'a');
+    expect(options.map((o) => o.value)).toEqual(['a', 'b', CUSTOM_MODEL_VALUE]);
+    expect(selected).toBe('a');
+  });
+
+  it('prepends the current value when it is not in the catalog', async () => {
+    const { buildModelOptions } = await import('../src/settingsModel');
+    const { options, selected } = buildModelOptions(['a'], 'custom-x');
+    expect(options[0]).toEqual({ value: 'custom-x', label: 'custom-x (current)' });
+    expect(selected).toBe('custom-x');
+  });
+
+  it('offers the provider default when nothing is set', async () => {
+    const { buildModelOptions } = await import('../src/settingsModel');
+    const { options, selected } = buildModelOptions(['a'], '');
+    expect(options[0]).toEqual({ value: '', label: '(provider default)' });
+    expect(selected).toBe('');
+  });
+
+  it('works with an empty catalog', async () => {
+    const { buildModelOptions, CUSTOM_MODEL_VALUE } = await import('../src/settingsModel');
+    const { options } = buildModelOptions([], 'x');
+    expect(options.map((o) => o.value)).toEqual(['x', CUSTOM_MODEL_VALUE]);
+  });
+});

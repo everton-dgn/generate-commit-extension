@@ -113,6 +113,49 @@
     return datalist;
   }
 
+  const customMode = {};
+
+  function modelControl(provider, key, idSuffix, fkey) {
+    const hasCatalog = provider.models.length > 0;
+    if (!hasCatalog || customMode[key]) {
+      const input = textInput(key, provider.model);
+      if (fkey) input.dataset.fkey = fkey;
+      const wrap = el('span', 'model-control');
+      wrap.append(input);
+      if (hasCatalog) {
+        const datalist = modelDatalist(input, provider.models, idSuffix);
+        if (datalist) wrap.append(datalist);
+        const back = el('button', 'link-btn', 'list');
+        back.type = 'button';
+        back.title = 'Show the model list';
+        back.addEventListener('click', () => {
+          delete customMode[key];
+          render();
+        });
+        wrap.append(back);
+      }
+      return wrap;
+    }
+    const select = el('select', 'control');
+    select.dataset.key = key;
+    if (fkey) select.dataset.fkey = fkey;
+    for (const option of provider.modelOptions) {
+      const opt = el('option', '', option.label);
+      opt.value = option.value;
+      if (option.value === provider.modelSelected) opt.selected = true;
+      select.append(opt);
+    }
+    select.addEventListener('change', () => {
+      if (select.value === state.customModelValue) {
+        customMode[key] = true;
+        render();
+        return;
+      }
+      sendUpdate(key, select.value);
+    });
+    return select;
+  }
+
   function renderProviderSection() {
     const section = el('section');
     section.append(el('h2', '', 'Provider'));
@@ -120,14 +163,8 @@
     section.append(field('Active provider', selectInput('provider', state.provider, options)));
     const active = providerById(state.provider);
     if (active) {
-      const modelInput = textInput(`${active.id}.model`, active.model);
-      // Distinct focus identity: the advanced section has a field with the
-      // same config key for this provider.
-      modelInput.dataset.fkey = `main:${active.id}.model`;
-      const modelField = field('Model', modelInput, active.availabilityNote);
-      const datalist = modelDatalist(modelInput, active.models, 'main');
-      if (datalist) modelField.append(datalist);
-      section.append(modelField);
+      const control = modelControl(active, `${active.id}.model`, 'main', `main:${active.id}.model`);
+      section.append(field('Model', control, active.availabilityNote));
     }
     return section;
   }
@@ -240,13 +277,10 @@
       const opts = options.map((o) => [o, o === '' ? '(provider default)' : o]);
       return field(label, selectInput(fullKey, current, opts));
     }
-    const input = textInput(fullKey, current);
-    const controlField = field(label, input);
     if (key === 'model') {
-      const datalist = modelDatalist(input, provider.models, `${provider.id}-adv`);
-      if (datalist) controlField.append(datalist);
+      return field(label, modelControl(provider, fullKey, `${provider.id}-adv`));
     }
-    return controlField;
+    return field(label, textInput(fullKey, current));
   }
 
   function renderAdvancedSection() {

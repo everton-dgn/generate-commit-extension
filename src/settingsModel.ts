@@ -179,6 +179,38 @@ export function isKeyBackedProvider(
   );
 }
 
+// ---------- model dropdown options ----------
+
+/** Sentinel option in the model select that switches to free-text mode. */
+export const CUSTOM_MODEL_VALUE = '__custom';
+
+export interface ModelOption {
+  readonly value: string;
+  readonly label: string;
+}
+
+/**
+ * Options for the model dropdown: every catalog entry, the current value
+ * prepended when it is not in the catalog (so a custom model never snaps
+ * away), the provider-default empty option when nothing is set, and the
+ * Custom… sentinel at the end.
+ */
+export function buildModelOptions(
+  models: readonly string[],
+  current: string,
+): { options: ModelOption[]; selected: string } {
+  const options: ModelOption[] = models.map((model) => ({ value: model, label: model }));
+  let selected = current;
+  if (current && !models.includes(current)) {
+    options.unshift({ value: current, label: `${current} (current)` });
+  } else if (!current) {
+    options.unshift({ value: '', label: '(provider default)' });
+    selected = '';
+  }
+  options.push({ value: CUSTOM_MODEL_VALUE, label: 'Custom…' });
+  return { options, selected };
+}
+
 // ---------- settings panel message protocol ----------
 
 export type PanelMessage =

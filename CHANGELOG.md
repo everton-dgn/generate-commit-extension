@@ -8,9 +8,10 @@ versionamento semântico.
 
 ### Adicionado
 
-- Sugestões de modelo ao vivo no campo Model do painel: a lista é buscada
-  no endpoint de modelos de cada provider (cache de 1 hora) e modelos novos
-  aparecem automaticamente, mantendo texto livre como fallback.
+- Sugestões de modelo ao vivo no campo Model do painel: a lista completa é
+  buscada no endpoint de modelos de cada provider (cache de 1 hora) e
+  modelos novos aparecem automaticamente no dropdown, com a opção "Custom…"
+  para digitar um ID fora da lista.
 
 ## [0.1.0] - 2026-08-02
 
