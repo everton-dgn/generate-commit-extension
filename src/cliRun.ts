@@ -24,16 +24,19 @@ const MAX_STDERR_CHARS = 200_000;
 
 /**
  * Runs a CLI with the prompt on stdin. Cancellation and timeout terminate the
- * child (SIGTERM, then SIGKILL after a grace period).
+ * whole process group (SIGTERM, then SIGKILL after a grace period), so
+ * subprocesses spawned by the CLI do not outlive the request.
  */
 export async function runCli(opts: RunCliOptions): Promise<CliResult> {
   return new Promise((resolve, reject) => {
     const env = { ...process.env };
     for (const key of opts.envRemove ?? []) delete env[key];
+    const detached = process.platform !== 'win32';
     const child = spawn(opts.bin, [...opts.args], {
       cwd: opts.cwd,
       env,
       stdio: ['pipe', 'pipe', 'pipe'],
+      detached,
     });
     let stdout = '';
     let stderr = '';
@@ -41,20 +44,21 @@ export async function runCli(opts: RunCliOptions): Promise<CliResult> {
     let cancelled = false;
     let settled = false;
 
-    const forceKill = (): void => {
+    const kill = (signal: NodeJS.Signals): void => {
       try {
-        child.kill('SIGKILL');
+        if (detached && child.pid) process.kill(-child.pid, signal);
+        else child.kill(signal);
       } catch {
-        // already gone
+        try {
+          child.kill(signal);
+        } catch {
+          // already gone
+        }
       }
     };
     const terminate = (): void => {
-      try {
-        child.kill('SIGTERM');
-      } catch {
-        // already gone
-      }
-      setTimeout(forceKill, 2000).unref();
+      kill('SIGTERM');
+      setTimeout(() => kill('SIGKILL'), 2000).unref();
     };
     const timer = setTimeout(() => {
       timedOut = true;
@@ -94,21 +98,41 @@ export async function runCli(opts: RunCliOptions): Promise<CliResult> {
     child.stdin.on('error', () => {
       // EPIPE: the child exited before consuming the prompt; handled by close.
     });
-    child.stdin.write(opts.stdin, 'utf8');
-    child.stdin.end();
+    // end() queues the whole payload and lets the stream drain it, so large
+    // prompts are delivered without manual backpressure handling.
+    child.stdin.end(opts.stdin, 'utf8');
   });
 }
 
-/** Collapses stderr into a single redacted line for the metadata-only log. */
-export function sanitizeCliErrorOutput(text: string, maxLen = 400): string {
-  const redacted = text
-    .replace(/sk-[A-Za-z0-9_-]{8,}/g, '[redacted]')
-    .replace(/((?:Bearer|x-api-key)\s*:?\s*)[A-Za-z0-9_.-]{8,}/gi, '$1[redacted]')
-    .replace(/\b(?:AKIA|ASIA)[0-9A-Z]{16}\b/g, '[redacted]');
-  const oneLine = redacted
-    .split('\n')
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .join(' | ');
-  return oneLine.length > maxLen ? `${oneLine.slice(0, maxLen)}...` : oneLine;
+const KNOWN_CLI_ERRORS: readonly { pattern: RegExp; label: string }[] = [
+  {
+    pattern: /not logged in|please log in|login required|not authenticated/i,
+    label: 'not logged in',
+  },
+  {
+    pattern:
+      /invalid (api )?key|incorrect api key|invalid x-api-key|authentication failed|unauthorized/i,
+    label: 'authentication failed',
+  },
+  {
+    pattern: /rate.?limit|usage limit|quota|too many requests|429/i,
+    label: 'rate limited',
+  },
+  { pattern: /overloaded|capacity|503/i, label: 'provider overloaded' },
+  {
+    pattern: /model .*not found|unknown model|invalid model|does not exist|unsupported value/i,
+    label: 'model or parameter not supported',
+  },
+  { pattern: /credit|billing|payment|insufficient/i, label: 'billing issue' },
+];
+
+/**
+ * Maps raw CLI stderr to a short, safe label from a closed list. Raw stderr
+ * never reaches logs or UI: it can echo the prompt (the diff) or secrets.
+ */
+export function classifyCliError(stderr: string): string | undefined {
+  for (const { pattern, label } of KNOWN_CLI_ERRORS) {
+    if (pattern.test(stderr)) return label;
+  }
+  return undefined;
 }

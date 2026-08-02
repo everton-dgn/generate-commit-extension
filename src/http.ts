@@ -1,3 +1,4 @@
+import { redactSecrets } from './secretsScan';
 import { ProviderError } from './types';
 
 export interface HttpOptions {
@@ -5,7 +6,7 @@ export interface HttpOptions {
   readonly signal: AbortSignal;
 }
 
-const MAX_ERROR_BODY_CHARS = 500;
+const MAX_ERROR_BODY_CHARS = 300;
 
 /** Maps HTTP status codes to distinct, actionable provider errors. */
 export function mapHttpError(
@@ -57,22 +58,26 @@ export function mapHttpError(
   }
 }
 
+/**
+ * Extracts a short, redacted detail from an error body. Anything matching the
+ * known secret patterns is replaced before the text reaches UI or logs.
+ */
 async function readErrorDetail(res: Response): Promise<string> {
   try {
     const text = await res.text();
+    let detail = '';
     try {
       const json = JSON.parse(text) as {
-        error?: { message?: unknown; type?: unknown; code?: unknown };
+        error?: { message?: unknown; type?: unknown };
         message?: unknown;
       };
       const message = json.error?.message ?? json.message;
-      if (typeof message === 'string' && message.trim())
-        return message.slice(0, MAX_ERROR_BODY_CHARS);
-      if (typeof json.error?.type === 'string') return json.error.type;
+      if (typeof message === 'string' && message.trim()) detail = message;
+      else if (typeof json.error?.type === 'string') detail = json.error.type;
     } catch {
-      // not JSON: fall through to the clipped body
+      detail = text.trim();
     }
-    return text.slice(0, MAX_ERROR_BODY_CHARS).trim();
+    return redactSecrets(detail).slice(0, MAX_ERROR_BODY_CHARS);
   } catch {
     return '';
   }
@@ -88,19 +93,41 @@ export async function postJson(
   if (!url.startsWith('https://')) {
     throw new ProviderError('network', `Refusing non-HTTPS URL: ${url}`);
   }
-  const timeout = AbortSignal.timeout(opts.timeoutMs);
-  const signal = AbortSignal.any([opts.signal, timeout]);
-  let res: Response;
+  // Compose user cancellation and timeout manually instead of AbortSignal.any
+  // (Node 20.3+), which older extension-host runtimes do not provide.
+  const controller = new AbortController();
+  let timedOut = false;
+  const onUserAbort = (): void => controller.abort();
+  if (opts.signal.aborted) controller.abort();
+  else opts.signal.addEventListener('abort', onUserAbort, { once: true });
+  const timer = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, opts.timeoutMs);
   try {
-    res = await fetch(url, {
+    const res = await fetch(url, {
       method: 'POST',
       headers: { 'content-type': 'application/json', ...headers },
       body: JSON.stringify(body),
-      signal,
+      signal: controller.signal,
     });
+    if (!res.ok) {
+      const detail = await readErrorDetail(res);
+      throw mapHttpError(res.status, detail, res.headers.get('retry-after'));
+    }
+    try {
+      return await res.json();
+    } catch {
+      throw new ProviderError(
+        'invalidResponse',
+        'Provider returned a non-JSON body',
+        'Check the configured base URL',
+      );
+    }
   } catch (err) {
+    if (err instanceof ProviderError) throw err;
     if (opts.signal.aborted) throw new ProviderError('cancelled', 'Request cancelled');
-    if (timeout.aborted) {
+    if (timedOut) {
       throw new ProviderError(
         'timeout',
         `Request timed out after ${Math.round(opts.timeoutMs / 1000)}s`,
@@ -112,10 +139,8 @@ export async function postJson(
       `Network error: ${err instanceof Error ? err.message : String(err)}`,
       'Check your internet connection',
     );
+  } finally {
+    clearTimeout(timer);
+    opts.signal.removeEventListener('abort', onUserAbort);
   }
-  if (!res.ok) {
-    const detail = await readErrorDetail(res);
-    throw mapHttpError(res.status, detail, res.headers.get('retry-after'));
-  }
-  return res.json();
 }

@@ -81,10 +81,20 @@ const DEFAULTS: Readonly<Record<ProviderId, ProviderRuntimeConfig>> = {
   codexCli: { model: '', baseUrl: '', auth: 'bearer', effort: 'low' },
 };
 
+function hostOnly(url: string): string {
+  try {
+    return new URL(url).host || 'invalid URL';
+  } catch {
+    return 'invalid URL';
+  }
+}
+
 function httpsOnly(url: string, fallback: string, onInvalid: (message: string) => void): string {
   const trimmed = url.trim().replace(/\/+$/, '');
   if (trimmed.startsWith('https://')) return trimmed;
-  if (trimmed) onInvalid(`Ignoring non-HTTPS base URL "${url}" (HTTPS is required).`);
+  // Host only: the raw URL may embed credentials that must not reach the log.
+  if (trimmed)
+    onInvalid(`Ignoring non-HTTPS base URL (host: ${hostOnly(url)}); HTTPS is required.`);
   return fallback;
 }
 

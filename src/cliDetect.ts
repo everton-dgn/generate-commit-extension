@@ -88,6 +88,8 @@ export async function findBinary(
   name: string,
   deps?: Partial<FindBinaryDeps>,
 ): Promise<string | null> {
+  // Name is passed to a shell below; reject anything beyond a plain binary name.
+  if (!/^[A-Za-z0-9._-]+$/.test(name)) return null;
   const d: FindBinaryDeps = {
     exec: defaultExec,
     isExecutable: defaultIsExecutable,
@@ -96,7 +98,7 @@ export async function findBinary(
     ...deps,
   };
   try {
-    const r = await d.exec('/bin/sh', ['-c', `command -v ${name}`], {
+    const r = await d.exec('/bin/sh', ['-c', 'command -v "$1"', 'sh', name], {
       timeoutMs: PATH_LOOKUP_TIMEOUT_MS,
     });
     const path = parseWhichOutput(r.stdout);
@@ -105,7 +107,7 @@ export async function findBinary(
     // keep trying other strategies
   }
   try {
-    const r = await d.exec(d.shell, ['-lic', `command -v ${name}`], {
+    const r = await d.exec(d.shell, ['-lic', 'command -v "$1"', 'sh', name], {
       timeoutMs: LOGIN_SHELL_TIMEOUT_MS,
     });
     const path = parseWhichOutput(r.stdout);

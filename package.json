@@ -201,16 +201,8 @@
         },
         "generateCommit.codexCli.effort": {
           "type": "string",
-          "enum": [
-            "",
-            "minimal",
-            "low",
-            "medium",
-            "high",
-            "xhigh"
-          ],
           "default": "low",
-          "markdownDescription": "Reasoning effort for the Codex CLI, passed as `-c model_reasoning_effort=\"<value>\"` (verified in the official config reference at 2026-08-02)."
+          "markdownDescription": "Reasoning effort for the Codex CLI, passed as `-c model_reasoning_effort=\"<value>\"`. Accepted values are model-dependent (verified 2026-08-02: `none`, `low`, `medium`, `high`, `xhigh`, `max` on the default model; the config reference also lists `minimal`). Empty uses the CLI default."
         }
       }
     }

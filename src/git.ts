@@ -35,7 +35,11 @@ export async function resolveRepository(api: API, arg: unknown): Promise<Reposit
   }
   const uri = extractRootUri(arg);
   if (uri) {
-    const match = repositories.find((repo) => repo.rootUri.toString() === uri.toString());
+    const direct = api.getRepository(uri);
+    if (direct) return direct;
+    const match =
+      repositories.find((repo) => repo.rootUri.fsPath === uri.fsPath) ??
+      repositories.find((repo) => repo.rootUri.fsPath.toLowerCase() === uri.fsPath.toLowerCase());
     if (match) return match;
   }
   const first = repositories[0];

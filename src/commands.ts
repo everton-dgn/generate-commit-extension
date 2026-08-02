@@ -31,6 +31,14 @@ export function registerCommands(context: vscode.ExtensionContext): void {
   );
 }
 
+/**
+ * One generation per repository: starting a new one aborts the previous and
+ * only the latest run may write to the input box (slow responses from older
+ * runs are discarded).
+ */
+const activeGenerations = new Map<string, { id: number; controller: AbortController }>();
+let generationSeq = 0;
+
 function onInvalidConfig(message: string): void {
   logMeta('config.invalid', { detail: message });
   void vscode.window.showWarningMessage(`Generate Commit: ${message}`);
@@ -89,11 +97,10 @@ function createProviders(context: vscode.ExtensionContext): Map<ProviderId, Prov
 async function collectAvailability(
   providers: ReadonlyMap<ProviderId, Provider>,
 ): Promise<Record<string, boolean>> {
-  const availability: Record<string, boolean> = {};
-  for (const [id, provider] of providers) {
-    availability[id] = await provider.isAvailable();
-  }
-  return availability;
+  const entries = await Promise.all(
+    [...providers].map(async ([id, provider]) => [id, await provider.isAvailable()] as const),
+  );
+  return Object.fromEntries(entries);
 }
 
 interface ResolvedDiff {
@@ -224,42 +231,67 @@ async function generateCommand(context: vscode.ExtensionContext, arg: unknown): 
     if (!provider) throw new Error(`Provider not registered: ${choice}`);
     const providerCfg = readProviderConfig(choice, onInvalidConfig);
 
-    const raw = await vscode.window.withProgress(
-      {
-        location: vscode.ProgressLocation.Notification,
-        title: `Generating commit message with ${provider.label}...`,
-        cancellable: true,
-      },
-      async (_progress, token) => {
-        const controller = new AbortController();
-        token.onCancellationRequested(() => controller.abort());
-        const req: GenerateRequest = {
-          systemPrompt,
-          userPrompt,
-          model: providerCfg.model,
-          effort: providerCfg.effort,
-          timeoutMs: cfg.timeoutSeconds * 1000,
-          signal: controller.signal,
-          cwd: repo.rootUri.fsPath,
-        };
-        return provider.generate(req);
-      },
-    );
+    const generationKey = repo.rootUri.toString();
+    activeGenerations.get(generationKey)?.controller.abort();
+    const generation = ++generationSeq;
+    const controller = new AbortController();
+    activeGenerations.set(generationKey, { id: generation, controller });
+    try {
+      const raw = await vscode.window.withProgress(
+        {
+          location: vscode.ProgressLocation.Notification,
+          title: `Generating commit message with ${provider.label}...`,
+          cancellable: true,
+        },
+        async (_progress, token) => {
+          token.onCancellationRequested(() => controller.abort());
+          const req: GenerateRequest = {
+            systemPrompt,
+            userPrompt,
+            model: providerCfg.model,
+            effort: providerCfg.effort,
+            timeoutMs: cfg.timeoutSeconds * 1000,
+            signal: controller.signal,
+            cwd: repo.rootUri.fsPath,
+          };
+          return provider.generate(req);
+        },
+      );
 
-    const message = parseModelOutput(raw);
-    if (!message) {
-      throw new ProviderError('invalidResponse', `${provider.label} returned an empty message`);
+      if (activeGenerations.get(generationKey)?.id !== generation) {
+        logMeta('generate.superseded', { provider: choice });
+        return;
+      }
+      if (diff.staged) {
+        const current = await getStagedDiff(repo).catch(() => diff.text);
+        if (current !== diff.text) {
+          logMeta('generate.staleDiff', { provider: choice });
+          void vscode.window.showInformationMessage(
+            'Generate Commit: the staged changes were modified during generation; the result was discarded. Run it again.',
+          );
+          return;
+        }
+      }
+
+      const message = parseModelOutput(raw);
+      if (!message) {
+        throw new ProviderError('invalidResponse', `${provider.label} returned an empty message`);
+      }
+      repo.inputBox.value = message;
+      logMeta('generate.success', {
+        provider: choice,
+        model: providerCfg.model || 'default',
+        ms: Date.now() - startedAt,
+        diffChars: finalDiff.length,
+        truncated,
+        staged: diff.staged,
+        files: `${includedFiles}/${totalFiles}`,
+      });
+    } finally {
+      if (activeGenerations.get(generationKey)?.id === generation) {
+        activeGenerations.delete(generationKey);
+      }
     }
-    repo.inputBox.value = message;
-    logMeta('generate.success', {
-      provider: choice,
-      model: providerCfg.model || 'default',
-      ms: Date.now() - startedAt,
-      diffChars: finalDiff.length,
-      truncated,
-      staged: diff.staged,
-      files: `${includedFiles}/${totalFiles}`,
-    });
   } catch (err) {
     handleGenerateError(err);
   }
@@ -388,10 +420,16 @@ async function validateApiKey(
     return { ok: true, reason: '' };
   } catch (err) {
     if (err instanceof ProviderError) {
-      // Auth failures reject the key; any other provider response means the
-      // endpoint accepted the key (credits, rate limit, model issues aside).
       if (err.kind === 'auth') return { ok: false, reason: 'authentication failed' };
-      return { ok: true, reason: '' };
+      // Responses from the endpoint (billing, rate limit, server errors, even
+      // a rejected payload) prove the key was accepted; connectivity errors
+      // (network, timeout) prove nothing.
+      const responded =
+        err.kind === 'billing' ||
+        err.kind === 'rateLimit' ||
+        err.kind === 'server' ||
+        err.kind === 'invalidResponse';
+      return responded ? { ok: true, reason: '' } : { ok: false, reason: err.message };
     }
     return { ok: false, reason: err instanceof Error ? err.message : String(err) };
   }

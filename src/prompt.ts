@@ -61,12 +61,13 @@ export function buildUserPrompt(input: UserPromptInput): string {
 }
 
 /**
- * Normalizes raw model output into a plain commit message: strips markdown
- * code fences, a leading "commit message:" label and wrapping quotes.
+ * Normalizes raw model output into a plain commit message: extracts the
+ * first fenced code block when present (models often wrap the answer even
+ * with preamble around it), then strips a leading label and wrapping quotes.
  */
 export function parseModelOutput(raw: string): string {
   let text = raw.trim();
-  const fenced = text.match(/^```[a-zA-Z]*\s*\n([\s\S]*?)\n?```\s*$/);
+  const fenced = text.match(/```[a-zA-Z]*\s*\n([\s\S]*?)\n?```/);
   if (fenced?.[1]) text = fenced[1].trim();
   text = text.replace(/^(commit message|mensagem de commit)\s*:\s*/i, '');
   if (text.length >= 2) {

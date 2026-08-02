@@ -1,5 +1,5 @@
 import { findBinary } from '../cliDetect';
-import { runCli, sanitizeCliErrorOutput } from '../cliRun';
+import { classifyCliError, runCli } from '../cliRun';
 import { type GenerateRequest, type Provider, ProviderError } from '../types';
 
 export interface ClaudeCliConfig {
@@ -27,17 +27,16 @@ export interface ClaudeCliDeps {
   readonly log?: (line: string) => void;
 }
 
+// Session-scoped cache: createProviders rebuilds instances per command, so
+// the resolved binary path must live at module scope to avoid re-probing.
+let cachedClaudePath: string | null | undefined;
+
 export function createClaudeCliProvider(deps: ClaudeCliDeps): Provider {
-  let cachedPath: string | null | undefined;
-  const resolvePath = (): Promise<string | null> => {
-    if (cachedPath === undefined) {
-      cachedPath = null;
-      return (deps.findBinaryPath ?? (() => findBinary('claude')))().then((path) => {
-        cachedPath = path;
-        return path;
-      });
+  const resolvePath = async (): Promise<string | null> => {
+    if (cachedClaudePath === undefined) {
+      cachedClaudePath = await (deps.findBinaryPath ?? (() => findBinary('claude')))();
     }
-    return Promise.resolve(cachedPath);
+    return cachedClaudePath;
   };
   return {
     id: 'claudeCli',
@@ -71,11 +70,14 @@ export function createClaudeCliProvider(deps: ClaudeCliDeps): Provider {
         );
       }
       if (result.code !== 0) {
-        const detail = sanitizeCliErrorOutput(result.stderr);
-        if (detail) deps.log?.(`claude stderr: ${detail}`);
+        const label = classifyCliError(result.stderr);
+        deps.log?.(`claude failed: code=${result.code ?? '?'}${label ? ` ${label}` : ''}`);
         throw new ProviderError(
           'cli',
-          `claude exited with code ${result.code ?? '?'}${detail ? `: ${detail}` : ''}`,
+          `claude exited with code ${result.code ?? '?'}${label ? `: ${label}` : ''}`,
+          label === 'not logged in'
+            ? 'Authenticate the Claude Code CLI or switch provider'
+            : undefined,
         );
       }
       if (!result.stdout.trim()) {

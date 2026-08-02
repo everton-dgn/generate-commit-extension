@@ -23,6 +23,13 @@ export const LOCKFILE_NAMES: ReadonlySet<string> = new Set([
   'bun.lock',
   'bun.lockb',
   'deno.lock',
+  'composer.lock',
+  'Gemfile.lock',
+  'Cargo.lock',
+  'go.sum',
+  'poetry.lock',
+  'uv.lock',
+  'Pipfile.lock',
 ]);
 
 const MINIFIED_PATTERN = /\.min\.(js|mjs|cjs|css)$/i;
@@ -86,7 +93,7 @@ export function filterFileDiffs(files: readonly FileDiff[], options: FilterOptio
     if (LOCKFILE_NAMES.has(name)) reason = 'lockfile';
     else if (MINIFIED_PATTERN.test(name)) reason = 'minified';
     else if (file.binary) reason = 'binary';
-    else if (file.chunk.length > options.maxFileBytes) reason = 'tooLarge';
+    else if (Buffer.byteLength(file.chunk, 'utf8') > options.maxFileBytes) reason = 'tooLarge';
     if (reason) dropped.push({ fileName: file.fileName, reason });
     else kept.push(file);
   }
@@ -114,9 +121,9 @@ export function truncateToLimit(files: readonly FileDiff[], maxChars: number): T
     const next = used === 0 ? file.chunk.length : used + 1 + file.chunk.length;
     if (next > maxChars && parts.length > 0) break;
     if (next > maxChars) {
-      // Even the first chunk exceeds the limit: hard-slice it.
+      // Even the first chunk exceeds the limit: hard-slice it (partial include).
       parts.push(file.chunk.slice(0, maxChars));
-      included = 0;
+      included = 1;
       used = maxChars;
       break;
     }

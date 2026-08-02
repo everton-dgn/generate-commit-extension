@@ -94,3 +94,12 @@ export function scanDiff(files: readonly FileDiff[]): Finding[] {
   }
   return findings;
 }
+
+/** Replaces anything matching the known secret patterns with "[redacted]". */
+export function redactSecrets(text: string): string {
+  let out = text;
+  for (const pattern of CONTENT_PATTERNS) {
+    out = out.replace(new RegExp(pattern.regex.source, 'g'), '[redacted]');
+  }
+  return out;
+}

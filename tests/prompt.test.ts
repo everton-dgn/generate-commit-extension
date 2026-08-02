@@ -69,6 +69,12 @@ describe('parseModelOutput', () => {
     expect(parseModelOutput('```text\nfeat: add button\n```')).toBe('feat: add button');
   });
 
+  it('extracts a fenced block surrounded by preamble and trailing text', () => {
+    expect(
+      parseModelOutput('Here is the commit message:\n```\nfeat: add button\n```\nHope that helps!'),
+    ).toBe('feat: add button');
+  });
+
   it('strips a leading label', () => {
     expect(parseModelOutput('Commit message: feat: add button')).toBe('feat: add button');
   });

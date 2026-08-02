@@ -79,6 +79,51 @@ describe('filterFileDiffs', () => {
     expect(dropped[0]?.reason).toBe('tooLarge');
   });
 
+  it('measures the limit in bytes, not UTF-16 units', () => {
+    // 4-byte emoji: the chunk is short in .length but exceeds the byte limit.
+    const emoji = chunk('src/emoji.ts', [`const s = "${'😀'.repeat(400)}";`]);
+    const files = splitDiffByFile(emoji);
+    const chunkLength = files[0]?.chunk.length ?? 0;
+    const byteLength = Buffer.byteLength(files[0]?.chunk ?? '', 'utf8');
+    expect(byteLength).toBeGreaterThan(chunkLength);
+    const { dropped } = filterFileDiffs(files, {
+      maxFileBytes: chunkLength + Math.floor((byteLength - chunkLength) / 2),
+    });
+    expect(dropped[0]?.reason).toBe('tooLarge');
+  });
+
+  it('drops non-JS lockfiles too', () => {
+    const { dropped } = filterFileDiffs(splitDiffByFile(chunk('api/composer.lock', ['x'])), opts);
+    expect(dropped[0]?.reason).toBe('lockfile');
+  });
+
+  it('keeps the header name for deleted files (+++ /dev/null)', () => {
+    const diff = [
+      'diff --git a/src/gone.ts b/src/gone.ts',
+      'index 1234567..0000000 100644',
+      '--- a/src/gone.ts',
+      '+++ /dev/null',
+      '@@ -1,1 +0,0 @@',
+      '-const x = 1;',
+    ].join('\n');
+    expect(splitDiffByFile(diff)[0]?.fileName).toBe('src/gone.ts');
+  });
+
+  it('uses the post-image name for renames', () => {
+    const diff = [
+      'diff --git a/src/old.ts b/src/new.ts',
+      'similarity index 90%',
+      'rename from src/old.ts',
+      'rename to src/new.ts',
+      '--- a/src/old.ts',
+      '+++ b/src/new.ts',
+      '@@ -1,1 +1,1 @@',
+      '-const a = 1;',
+      '+const a = 2;',
+    ].join('\n');
+    expect(splitDiffByFile(diff)[0]?.fileName).toBe('src/new.ts');
+  });
+
   it('keeps regular source files', () => {
     const { kept, dropped } = filterFileDiffs(
       splitDiffByFile(chunk('src/a.ts', ['const a = 1;'])),
@@ -114,7 +159,7 @@ describe('truncateToLimit', () => {
     const files = splitDiffByFile(chunk('src/a.ts', ['a'.repeat(500)]));
     const result = truncateToLimit(files, 100);
     expect(result.truncated).toBe(true);
-    expect(result.includedFiles).toBe(0);
+    expect(result.includedFiles).toBe(1);
     expect(result.diff.length).toBeLessThan(200);
   });
 });

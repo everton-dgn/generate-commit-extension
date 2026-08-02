@@ -83,6 +83,11 @@ describe('scanDiff positives', () => {
     expect(findings).toHaveLength(1);
   });
 
+  it('does not double-flag sk-or- or sk-ant- as generic sk- keys', () => {
+    expect(scan('a.ts', ['k = "sk-or-v1-0123456789abcdef"'])).toEqual(['openrouter-key']);
+    expect(scan('a.ts', ['k = "sk-ant-api03-0123456789abcdef"'])).toEqual(['anthropic-key']);
+  });
+
   it('never includes the secret value in findings', () => {
     const secret = 'sk-or-v1-0123456789abcdef';
     const findings = scanDiff(splitDiffByFile(diffWith('a.ts', [`key = "${secret}"`])));
@@ -103,5 +108,19 @@ describe('scanDiff negatives', () => {
 
   it('flags nothing in ordinary source changes', () => {
     expect(scan('src/app.ts', cleanLines)).toHaveLength(0);
+  });
+});
+
+describe('redactSecrets', () => {
+  it('redacts every known pattern and leaves ordinary text alone', async () => {
+    const { redactSecrets } = await import('../src/secretsScan');
+    const out = redactSecrets(
+      'keys: sk-or-v1-0123456789abcdef and AKIAIOSFODNN7EXAMPLE and ghp_0123456789abcdefghijklmn',
+    );
+    expect(out).not.toContain('sk-or-v1');
+    expect(out).not.toContain('AKIA');
+    expect(out).not.toContain('ghp_');
+    expect(out.match(/\[redacted\]/g)).toHaveLength(3);
+    expect(redactSecrets('plain log line')).toBe('plain log line');
   });
 });

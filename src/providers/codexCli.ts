@@ -2,7 +2,7 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { findBinary } from '../cliDetect';
-import { runCli, sanitizeCliErrorOutput } from '../cliRun';
+import { classifyCliError, runCli } from '../cliRun';
 import { type GenerateRequest, type Provider, ProviderError } from '../types';
 
 export interface CodexCliConfig {
@@ -13,7 +13,9 @@ export interface CodexCliConfig {
 /**
  * Flags verified against `codex exec --help` (codex-cli 0.146.0) and the
  * official config reference (`model_reasoning_effort`: minimal, low, medium,
- * high, xhigh) at 2026-08-02.
+ * high, xhigh) at 2026-08-02. Note: the `-a/--ask-for-approval` flag vanished
+ * from `--help` between two reads on the same day and version (dynamic CLI
+ * surface), so the approval policy is pinned via the config key instead.
  */
 export function buildCodexArgs(cfg: CodexCliConfig, outputFile: string): string[] {
   const args = [
@@ -22,8 +24,8 @@ export function buildCodexArgs(cfg: CodexCliConfig, outputFile: string): string[
     'never',
     '--sandbox',
     'read-only',
-    '--ask-for-approval',
-    'never',
+    '--config',
+    'approval_policy="never"',
     '--skip-git-repo-check',
     '--ephemeral',
     '--output-last-message',
@@ -42,17 +44,16 @@ export interface CodexCliDeps {
   readonly log?: (line: string) => void;
 }
 
+// Session-scoped cache: createProviders rebuilds instances per command, so
+// the resolved binary path must live at module scope to avoid re-probing.
+let cachedCodexPath: string | null | undefined;
+
 export function createCodexCliProvider(deps: CodexCliDeps): Provider {
-  let cachedPath: string | null | undefined;
-  const resolvePath = (): Promise<string | null> => {
-    if (cachedPath === undefined) {
-      cachedPath = null;
-      return (deps.findBinaryPath ?? (() => findBinary('codex')))().then((path) => {
-        cachedPath = path;
-        return path;
-      });
+  const resolvePath = async (): Promise<string | null> => {
+    if (cachedCodexPath === undefined) {
+      cachedCodexPath = await (deps.findBinaryPath ?? (() => findBinary('codex')))();
     }
-    return Promise.resolve(cachedPath);
+    return cachedCodexPath;
   };
   return {
     id: 'codexCli',
@@ -88,11 +89,12 @@ export function createCodexCliProvider(deps: CodexCliDeps): Provider {
           );
         }
         if (result.code !== 0) {
-          const detail = sanitizeCliErrorOutput(result.stderr);
-          if (detail) deps.log?.(`codex stderr: ${detail}`);
+          const label = classifyCliError(result.stderr);
+          deps.log?.(`codex failed: code=${result.code ?? '?'}${label ? ` ${label}` : ''}`);
           throw new ProviderError(
             'cli',
-            `codex exited with code ${result.code ?? '?'}${detail ? `: ${detail}` : ''}`,
+            `codex exited with code ${result.code ?? '?'}${label ? `: ${label}` : ''}`,
+            label === 'not logged in' ? 'Authenticate the Codex CLI or switch provider' : undefined,
           );
         }
         let text = '';

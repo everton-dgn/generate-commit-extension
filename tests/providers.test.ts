@@ -169,16 +169,21 @@ describe('buildCodexArgs', () => {
     const args = buildCodexArgs({ model: '', effort: '' }, '/tmp/out.md');
     expect(args).toContain('exec');
     expect(args).toContain('read-only');
-    expect(args).toContain('never');
     expect(args).toContain('--skip-git-repo-check');
     expect(args).toContain('--ephemeral');
     expect(args).toContain('/tmp/out.md');
   });
 
+  it('pins the approval policy through the config key (flag removed in 0.146.0)', () => {
+    const args = buildCodexArgs({ model: '', effort: '' }, '/tmp/out.md');
+    const idx = args.indexOf('--config');
+    expect(args[idx + 1]).toBe('approval_policy="never"');
+    expect(args).not.toContain('--ask-for-approval');
+  });
+
   it('passes effort through the documented config key', () => {
     const args = buildCodexArgs({ model: 'gpt-x', effort: 'high' }, '/tmp/out.md');
-    const idx = args.indexOf('--config');
-    expect(args[idx + 1]).toBe('model_reasoning_effort="high"');
+    expect(args).toContain('model_reasoning_effort="high"');
     expect(args).toContain('gpt-x');
   });
 });

@@ -105,7 +105,7 @@ chave (campo mascarado), aguarde a validação rápida e pronto. A chave fica em
 | `generateCommit.<provider>.baseUrl` | ver tabela | Base URL por provider HTTP (somente HTTPS). |
 | `generateCommit.anthropicCustom.authHeader` | `x-api-key` | Estilo de auth do endpoint custom (`x-api-key` ou `bearer`). |
 | `generateCommit.claudeCli.effort` | `low` | `--effort` do Claude Code (`low` a `max`, vazio = default do CLI). |
-| `generateCommit.codexCli.effort` | `low` | `model_reasoning_effort` do Codex (`minimal` a `xhigh`, vazio = default). |
+| `generateCommit.codexCli.effort` | `low` | `model_reasoning_effort` do Codex. Os valores aceitos dependem do modelo (verificado em 2026-08-02 no modelo default: `none`, `low`, `medium`, `high`, `xhigh`, `max`; a referência de config também lista `minimal`). Vazio = default do CLI. |
 
 ## Segurança
 
@@ -122,7 +122,17 @@ chave (campo mascarado), aguarde a validação rápida e pronto. A chave fica em
 - **Somente HTTPS**; timeout configurável (default 60 s).
 - **Log só com metadados** (provider, modelo, latência, tamanho do diff) no
   Output Channel "Generate Commit". Diff, chaves e respostas nunca são
-  logados; stderr de CLIs passa por redação de padrões de segredo.
+  logados; stderr de CLIs **nunca** é exibido ou logado cru (é classificado
+  por uma lista fechada de assinaturas, ex.: "not logged in"), e os detalhes
+  de erro HTTP passam pela mesma redação de segredos do scanner antes de
+  chegar à UI.
+- **Cancelamento robusto**: o botão de cancelar aborta a chamada HTTP ou mata
+  o **grupo de processos** do CLI (SIGTERM, depois SIGKILL), incluindo
+  subprocessos filhos.
+- **Concorrência e consistência**: uma geração por repositório (iniciar outra
+  aborta a anterior e só a mais recente escreve na caixa); o diff staged é
+  relido antes de preencher a caixa e o resultado é descartado se o stage
+  mudou durante a geração.
 - **Zero telemetria** e zero chamadas a serviços além do provider escolhido.
 - Sem webview e sem a API `vscode.lm` (que depende do Copilot e não existe
   no VSCodium).
@@ -156,8 +166,8 @@ Scripts: `pnpm test` (Vitest), `pnpm typecheck` (tsc), `pnpm lint` (Biome),
 | MiniMax endpoint | `POST https://api.minimax.io/anthropic/v1/messages`; auth Bearer **ou** `x-api-key`; `anthropic-version` não exigido | [platform.minimax.io/docs](https://platform.minimax.io/docs) |
 | MiniMax modelos | `MiniMax-M3`, `MiniMax-M2.7`, `MiniMax-M2.5`, `MiniMax-M2.1`, `MiniMax-M2` (+ variantes `-highspeed`) | [platform.minimax.io/docs](https://platform.minimax.io/docs) |
 | Claude Code flags | `-p`, `--tools`, `--model`, `--effort (low..max)`, `--output-format`, `--no-session-persistence`; **não existe** flag `--fast` na 2.1.220 | `claude --help` local (2.1.220) |
-| Codex flags | `codex exec`, `--model`, `--sandbox read-only`, `--ask-for-approval never`, `--skip-git-repo-check`, `--ephemeral`, `--output-last-message`, `--config k=v` | `codex --help` / `codex exec --help` locais (0.146.0) |
-| Codex effort | `model_reasoning_effort`: `minimal`, `low`, `medium`, `high`, `xhigh` | [config-reference](https://developers.openai.com/codex/config-reference) |
+| Codex flags | `codex exec`, `--model`, `--sandbox read-only`, `--skip-git-repo-check`, `--ephemeral`, `--output-last-message`, `--config k=v` | `codex --help` / `codex exec --help` locais (0.146.0) |
+| Codex approval/effort | `approval_policy="never"` e `model_reasoning_effort` via `-c`; o flag `--ask-for-approval` apareceu e desapareceu do `--help` na mesma versão (superfície dinâmica), então a política vai pela chave de config | [config-reference](https://developers.openai.com/codex/config-reference) + verificação local em 2026-08-02 |
 
 Ressalvas registradas pela pesquisa: Kimi e GLM não documentam o path literal
 (`/v1/messages`) nem os headers HTTP crus fora do contexto do Claude Code
