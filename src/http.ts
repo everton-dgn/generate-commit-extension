@@ -127,9 +127,11 @@ async function requestJson(url: string, init: RequestInit, opts: HttpOptions): P
     controller.abort();
   }, opts.timeoutMs);
   try {
+    const headers: Record<string, string> = { ...init.headers };
+    if (init.body !== undefined) headers['content-type'] = 'application/json';
     const res = await fetch(url, {
       method: init.method,
-      headers: { 'content-type': 'application/json', ...init.headers },
+      headers,
       body: init.body === undefined ? undefined : JSON.stringify(init.body),
       signal: controller.signal,
     });

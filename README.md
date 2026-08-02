@@ -146,6 +146,10 @@ Settings do editor (filtre por `generateCommit`).
   por uma lista fechada de assinaturas, ex.: "not logged in"), e os detalhes
   de erro HTTP passam pela mesma redação de segredos do scanner antes de
   chegar à UI.
+- **Chaves fora do alcance de workspaces**: `*.baseUrl` e
+  `anthropicCustom.authHeader` têm escopo `machine`, então um
+  `.vscode/settings.json` de repositório não pode redirecionar suas chaves
+  para um host de terceiros.
 - **Cancelamento robusto**: o botão de cancelar aborta a chamada HTTP ou mata
   o **grupo de processos** do CLI (SIGTERM, depois SIGKILL), incluindo
   subprocessos filhos.

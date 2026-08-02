@@ -32,6 +32,9 @@ export function modelsEndpointFor(id: ProviderId, baseUrl: string): string | nul
         : `${base}/v1/models`;
     case 'minimax':
     case 'anthropicCustom':
+      // MiniMax keeps /anthropic on purpose: its official spec documents
+      // GET <base>/anthropic/v1/models (X-Api-Key auth), unlike Kimi/GLM,
+      // whose catalogs live on the OpenAI-compatible path.
       return `${base}/v1/models`;
     case 'claudeCli':
     case 'codexCli':
@@ -66,7 +69,7 @@ export function parseModelListResponse(json: unknown): string[] {
     if (typeof item === 'string') push(item);
     else if (item !== null && typeof item === 'object') {
       const record = item as Record<string, unknown>;
-      push(record.id ?? record.name ?? record.model);
+      push(record.id || record.name || record.model);
     }
   }
   return out;
@@ -82,16 +85,38 @@ export interface ModelCatalogConfig {
   readonly auth: 'x-api-key' | 'bearer';
 }
 
+/**
+ * Auth header per provider's CATALOG endpoint contract, which can differ
+ * from the messages endpoint: MiniMax lists models behind X-Api-Key even
+ * though its messages endpoint accepts Bearer (verified 2026-08-02).
+ */
+export function catalogAuthHeader(
+  id: ProviderId,
+  apiKey: string,
+  cfg: ModelCatalogConfig,
+): Record<string, string> {
+  if (id === 'minimax') return { 'x-api-key': apiKey };
+  if (cfg.auth === 'bearer') return { authorization: `Bearer ${apiKey}` };
+  return { 'x-api-key': apiKey };
+}
+
+/** Cache signature: refetch when the endpoint or auth style changes. */
+export function catalogSignature(id: ProviderId, cfg: ModelCatalogConfig): string {
+  return `${modelsEndpointFor(id, cfg.baseUrl) ?? ''}|${cfg.auth}`;
+}
+
 export interface ModelCatalogDeps {
   readonly getApiKey: (id: ProviderId) => Promise<string | undefined>;
   readonly getConfig: (id: ProviderId) => ModelCatalogConfig;
   readonly now: () => number;
   readonly timeoutMs: number;
+  readonly signal: AbortSignal;
 }
 
 interface CacheEntry {
   readonly at: number;
   readonly models: readonly string[];
+  readonly signature: string;
 }
 
 export class ModelCatalog {
@@ -99,37 +124,40 @@ export class ModelCatalog {
 
   constructor(private readonly deps: ModelCatalogDeps) {}
 
-  /** Synchronous read: cached models, static CLI aliases, or []. */
+  /** Synchronous read: cached models for the CURRENT endpoint/auth, static CLI aliases, or []. */
   modelsFor(id: ProviderId): readonly string[] {
     if (id === 'claudeCli') return CLAUDE_CLI_MODELS;
-    return this.cache.get(id)?.models ?? [];
+    const signature = catalogSignature(id, this.deps.getConfig(id));
+    const entry = this.cache.get(id);
+    return entry && entry.signature === signature ? entry.models : [];
   }
 
-  /** Refreshes one provider when stale; failures keep the previous cache. */
-  async refresh(id: ProviderId): Promise<boolean> {
+  /** Refreshes one provider when stale (or when force, or the endpoint/auth changed); failures keep the previous cache. */
+  async refresh(id: ProviderId, force = false): Promise<boolean> {
     if (id === 'claudeCli' || id === 'codexCli') return false;
-    const existing = this.cache.get(id);
-    if (!shouldRefetch(existing?.at, this.deps.now(), MODELS_TTL_MS)) return false;
     const cfg = this.deps.getConfig(id);
+    const signature = catalogSignature(id, cfg);
+    const existing = this.cache.get(id);
+    const fresh =
+      existing?.signature === signature &&
+      !shouldRefetch(existing.at, this.deps.now(), MODELS_TTL_MS);
+    if (!force && fresh) return false;
     const endpoint = modelsEndpointFor(id, cfg.baseUrl);
     if (!endpoint) return false;
     try {
       const headers: Record<string, string> = {};
       const key = await this.deps.getApiKey(id);
-      if (key) {
-        if (cfg.auth === 'bearer') headers.authorization = `Bearer ${key}`;
-        else headers['x-api-key'] = key;
-      }
+      if (key) Object.assign(headers, catalogAuthHeader(id, key, cfg));
       if (id === 'minimax' || id === 'anthropicCustom') {
         headers['anthropic-version'] = '2023-06-01';
       }
       const json = await getJson(endpoint, headers, {
         timeoutMs: this.deps.timeoutMs,
-        signal: new AbortController().signal,
+        signal: this.deps.signal,
       });
       const models = parseModelListResponse(json);
       if (models.length > 0) {
-        this.cache.set(id, { at: this.deps.now(), models });
+        this.cache.set(id, { at: this.deps.now(), models, signature });
         return true;
       }
       return false;

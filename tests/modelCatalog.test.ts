@@ -80,6 +80,12 @@ describe('parseModelListResponse', () => {
     expect(parseModelListResponse({})).toEqual([]);
     expect(parseModelListResponse('nope')).toEqual([]);
   });
+
+  it('falls through to name when id is an empty string', () => {
+    expect(parseModelListResponse({ data: [{ id: '', name: 'real-model' }] })).toEqual([
+      'real-model',
+    ]);
+  });
 });
 
 describe('shouldRefetch', () => {
@@ -96,6 +102,7 @@ describe('ModelCatalog', () => {
     getConfig: () => ({ baseUrl: 'https://api.minimax.io/anthropic', auth: 'bearer' as const }),
     now: () => 1000,
     timeoutMs: 5000,
+    signal: new AbortController().signal,
   };
 
   beforeEach(() => {
@@ -108,15 +115,68 @@ describe('ModelCatalog', () => {
     expect(catalog.modelsFor('codexCli')).toEqual([]);
   });
 
-  it('fetches, caches and serves models with the right auth headers', async () => {
+  it('fetches, caches and serves models with the MiniMax catalog contract (X-Api-Key)', async () => {
     getJsonMock.mockResolvedValue({ data: [{ id: 'MiniMax-M3' }, { id: 'MiniMax-M2.5' }] });
     const catalog = new ModelCatalog(baseDeps);
     await expect(catalog.refresh('minimax')).resolves.toBe(true);
     expect(catalog.modelsFor('minimax')).toEqual(['MiniMax-M3', 'MiniMax-M2.5']);
     const [url, headers] = getJsonMock.mock.calls[0] as [string, Record<string, string>];
     expect(url).toBe('https://api.minimax.io/anthropic/v1/models');
-    expect(headers.authorization).toBe('Bearer KEY');
+    // The models endpoint requires X-Api-Key even though the messages
+    // endpoint accepts Bearer (verified 2026-08-02).
+    expect(headers['x-api-key']).toBe('KEY');
+    expect(headers.authorization).toBeUndefined();
     expect(headers['anthropic-version']).toBe('2023-06-01');
+  });
+
+  it('uses bearer auth for bearer presets and x-api-key for the custom endpoint', async () => {
+    getJsonMock.mockResolvedValue({ data: [{ id: 'm1' }] });
+    const kimi = new ModelCatalog({
+      ...baseDeps,
+      getConfig: () => ({ baseUrl: 'https://api.moonshot.ai/anthropic', auth: 'bearer' as const }),
+    });
+    await kimi.refresh('kimi');
+    expect((getJsonMock.mock.calls[0] as [string, Record<string, string>])[1].authorization).toBe(
+      'Bearer KEY',
+    );
+    const custom = new ModelCatalog({
+      ...baseDeps,
+      getConfig: () => ({ baseUrl: 'https://api.anthropic.com', auth: 'x-api-key' as const }),
+    });
+    await custom.refresh('anthropicCustom');
+    expect((getJsonMock.mock.calls[1] as [string, Record<string, string>])[1]['x-api-key']).toBe(
+      'KEY',
+    );
+  });
+
+  it('fetches OpenRouter without a key', async () => {
+    getJsonMock.mockResolvedValue({ data: [{ id: 'google/gemini-2.5-flash-lite' }] });
+    const catalog = new ModelCatalog({
+      ...baseDeps,
+      getApiKey: async () => undefined,
+      getConfig: () => ({ baseUrl: 'https://openrouter.ai/api/v1', auth: 'bearer' as const }),
+    });
+    await expect(catalog.refresh('openrouter')).resolves.toBe(true);
+    expect(catalog.modelsFor('openrouter')).toEqual(['google/gemini-2.5-flash-lite']);
+    const [, headers] = getJsonMock.mock.calls[0] as [string, Record<string, string>];
+    expect(headers.authorization).toBeUndefined();
+  });
+
+  it('invalidates the cache when the endpoint or auth changes, even inside the TTL', async () => {
+    let cfg = { baseUrl: 'https://api.minimax.io/anthropic', auth: 'bearer' as const };
+    getJsonMock.mockResolvedValue({ data: [{ id: 'm-old' }] });
+    const catalog = new ModelCatalog({ ...baseDeps, getConfig: () => cfg });
+    await catalog.refresh('minimax');
+    expect(catalog.modelsFor('minimax')).toEqual(['m-old']);
+    getJsonMock.mockResolvedValue({ data: [{ id: 'm-new' }] });
+    cfg = { baseUrl: 'https://api.minimaxi.com/anthropic', auth: 'bearer' as const };
+    expect(catalog.modelsFor('minimax')).toEqual([]);
+    await expect(catalog.refresh('minimax')).resolves.toBe(true);
+    expect(getJsonMock).toHaveBeenCalledTimes(2);
+    expect((getJsonMock.mock.calls[1] as [string])[0]).toBe(
+      'https://api.minimaxi.com/anthropic/v1/models',
+    );
+    expect(catalog.modelsFor('minimax')).toEqual(['m-new']);
   });
 
   it('skips the network while the cache is fresh', async () => {
