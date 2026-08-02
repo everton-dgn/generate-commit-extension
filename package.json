@@ -1,0 +1,236 @@
+{
+  "name": "generate-commit",
+  "displayName": "Generate Commit with AI",
+  "description": "Generate Conventional Commits messages from your staged diff using AI providers (OpenRouter, Kimi, GLM, MiniMax, Claude Code CLI, Codex CLI).",
+  "version": "0.1.0",
+  "publisher": "everton",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "SCM Providers",
+    "Machine Learning"
+  ],
+  "enabledApiProposals": [
+    "contribSourceControlInputBoxMenu"
+  ],
+  "main": "./dist/extension.js",
+  "activationEvents": [],
+  "contributes": {
+    "commands": [
+      {
+        "command": "generateCommit.generate",
+        "title": "Generate Commit Message",
+        "icon": "$(sparkle)",
+        "category": "Generate Commit"
+      },
+      {
+        "command": "generateCommit.switchProvider",
+        "title": "Switch Provider / Model",
+        "category": "Generate Commit"
+      },
+      {
+        "command": "generateCommit.configure",
+        "title": "Configure API Key",
+        "category": "Generate Commit"
+      }
+    ],
+    "menus": {
+      "scm/inputBox": [
+        {
+          "command": "generateCommit.generate",
+          "when": "scmProvider == git",
+          "group": "inline"
+        }
+      ],
+      "scm/title": [
+        {
+          "command": "generateCommit.generate",
+          "when": "scmProvider == git",
+          "group": "navigation"
+        },
+        {
+          "command": "generateCommit.switchProvider",
+          "when": "scmProvider == git",
+          "group": "2_actions"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Generate Commit with AI",
+      "properties": {
+        "generateCommit.provider": {
+          "type": "string",
+          "enum": [
+            "claudeCli",
+            "codexCli",
+            "openrouter",
+            "kimi",
+            "glm",
+            "minimax",
+            "anthropicCustom"
+          ],
+          "default": "claudeCli",
+          "markdownDescription": "Active provider used to generate commit messages. Unavailable providers fall back to the first available one."
+        },
+        "generateCommit.language": {
+          "type": "string",
+          "default": "en",
+          "markdownDescription": "Language of the generated commit message (e.g. `en`, `pt-BR`, `es`, `fr`)."
+        },
+        "generateCommit.maxDiffChars": {
+          "type": "number",
+          "default": 50000,
+          "minimum": 1000,
+          "markdownDescription": "Maximum number of characters of the diff sent to the provider. The diff is truncated at file boundaries and the truncation is flagged in the prompt."
+        },
+        "generateCommit.maxFileSizeKB": {
+          "type": "number",
+          "default": 50,
+          "minimum": 1,
+          "markdownDescription": "Files whose diff chunk exceeds this size (KB) are excluded from the prompt."
+        },
+        "generateCommit.includeRecentCommits": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Include the 10 most recent commit subjects as style context."
+        },
+        "generateCommit.customPrompt": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Extra instructions appended to the system prompt (e.g. project-specific conventions)."
+        },
+        "generateCommit.unstagedFallback": {
+          "type": "string",
+          "enum": [
+            "ask",
+            "always",
+            "never"
+          ],
+          "default": "ask",
+          "markdownDescription": "What to do when the staged diff is empty: ask to use unstaged changes, always use them, or never."
+        },
+        "generateCommit.timeoutSeconds": {
+          "type": "number",
+          "default": 60,
+          "minimum": 5,
+          "markdownDescription": "Timeout (seconds) for provider HTTP requests and CLI executions."
+        },
+        "generateCommit.openrouter.model": {
+          "type": "string",
+          "default": "google/gemini-2.5-flash-lite",
+          "markdownDescription": "Model ID for OpenRouter (verified on https://openrouter.ai/models at 2026-08-02)."
+        },
+        "generateCommit.openrouter.baseUrl": {
+          "type": "string",
+          "default": "https://openrouter.ai/api/v1",
+          "markdownDescription": "Base URL of the OpenAI-compatible OpenRouter API. HTTPS only."
+        },
+        "generateCommit.kimi.model": {
+          "type": "string",
+          "default": "kimi-k2.6",
+          "markdownDescription": "Model ID for Kimi / Moonshot AI (verified at 2026-08-02). Avoid `kimi-k2.7-code`: it rejects requests without thinking enabled."
+        },
+        "generateCommit.kimi.baseUrl": {
+          "type": "string",
+          "default": "https://api.moonshot.ai/anthropic",
+          "markdownDescription": "Base URL of the Kimi Anthropic-compatible API (China: `https://api.moonshot.cn/anthropic`). HTTPS only."
+        },
+        "generateCommit.glm.model": {
+          "type": "string",
+          "default": "glm-4.5-air",
+          "markdownDescription": "Model ID for GLM / z.ai (verified at 2026-08-02: `glm-5.2`, `glm-4.7`, `glm-4.5-air`)."
+        },
+        "generateCommit.glm.baseUrl": {
+          "type": "string",
+          "default": "https://api.z.ai/api/anthropic",
+          "markdownDescription": "Base URL of the z.ai Anthropic-compatible API. HTTPS only."
+        },
+        "generateCommit.minimax.model": {
+          "type": "string",
+          "default": "MiniMax-M2.5-highspeed",
+          "markdownDescription": "Model ID for MiniMax (verified at 2026-08-02: `MiniMax-M3`, `MiniMax-M2.7`, `MiniMax-M2.5`, and `-highspeed` variants)."
+        },
+        "generateCommit.minimax.baseUrl": {
+          "type": "string",
+          "default": "https://api.minimax.io/anthropic",
+          "markdownDescription": "Base URL of the MiniMax Anthropic-compatible API (China: `https://api.minimaxi.com/anthropic`). HTTPS only."
+        },
+        "generateCommit.anthropicCustom.model": {
+          "type": "string",
+          "default": "claude-haiku-4-5-20251001",
+          "markdownDescription": "Model ID for the generic Anthropic-compatible endpoint."
+        },
+        "generateCommit.anthropicCustom.baseUrl": {
+          "type": "string",
+          "default": "https://api.anthropic.com",
+          "markdownDescription": "Base URL of any Anthropic-compatible endpoint (the client posts to `<baseUrl>/v1/messages`). HTTPS only."
+        },
+        "generateCommit.anthropicCustom.authHeader": {
+          "type": "string",
+          "enum": [
+            "x-api-key",
+            "bearer"
+          ],
+          "default": "x-api-key",
+          "markdownDescription": "Authentication header style for the custom Anthropic-compatible endpoint: `x-api-key` (Anthropic) or `bearer` (`Authorization: Bearer`)."
+        },
+        "generateCommit.claudeCli.model": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Model for the Claude Code CLI (`--model`). Empty uses the CLI default. Accepts aliases (`sonnet`, `opus`, `fable`) or full IDs (verified with `claude --help` 2.1.220 at 2026-08-02)."
+        },
+        "generateCommit.claudeCli.effort": {
+          "type": "string",
+          "enum": [
+            "",
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max"
+          ],
+          "default": "low",
+          "markdownDescription": "Effort level for the Claude Code CLI (`--effort`). Empty uses the CLI default."
+        },
+        "generateCommit.codexCli.model": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Model for the Codex CLI (`--model`). Empty uses the CLI default."
+        },
+        "generateCommit.codexCli.effort": {
+          "type": "string",
+          "enum": [
+            "",
+            "minimal",
+            "low",
+            "medium",
+            "high",
+            "xhigh"
+          ],
+          "default": "low",
+          "markdownDescription": "Reasoning effort for the Codex CLI, passed as `-c model_reasoning_effort=\"<value>\"` (verified in the official config reference at 2026-08-02)."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "node esbuild.config.mjs --minify",
+    "watch": "node esbuild.config.mjs --watch",
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "test": "vitest run",
+    "package": "pnpm run build && vsce package --no-dependencies"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.6",
+    "@types/node": "^26.1.2",
+    "@types/vscode": "~1.85.0",
+    "@vscode/vsce": "^3.9.2",
+    "esbuild": "^0.28.1",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.10"
+  }
+}

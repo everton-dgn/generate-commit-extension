@@ -1,0 +1,15 @@
+.vscode/**
+.git/**
+src/**
+tests/**
+node_modules/**
+**/*.map
+**/*.ts
+.gitignore
+biome.json
+tsconfig.json
+vitest.config.ts
+esbuild.config.mjs
+pnpm-workspace.yaml
+pnpm-lock.yaml
+!dist/extension.js
