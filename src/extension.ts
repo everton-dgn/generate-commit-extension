@@ -15,5 +15,5 @@ export function activate(context: vscode.ExtensionContext): void {
 }
 
 export function deactivate(): void {
-  // nothing to dispose beyond subscriptions
+  // nada a descartar além das subscriptions
 }

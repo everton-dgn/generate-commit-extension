@@ -1,13 +1,13 @@
 import type { ProviderId } from './types';
 
-/** Parses a positive integer setting; undefined when invalid or below min. */
+/** Interpreta uma configuração de inteiro positivo; undefined quando inválida ou abaixo do mínimo. */
 export function parseIntSetting(input: string, min: number): number | undefined {
   const value = Number(input.trim());
   if (!Number.isInteger(value) || value < min) return undefined;
   return value;
 }
 
-/** Empty resets to the provider default; otherwise a valid HTTPS URL is required. */
+/** Vazio restaura o padrão do provider; caso contrário, exige uma URL HTTPS válida. */
 export function isValidBaseUrl(input: string): boolean {
   const trimmed = input.trim();
   if (trimmed === '') return true;
@@ -51,7 +51,7 @@ const TEXT_BASE_URL: AdvancedItem = {
   kind: 'text',
 };
 
-/** Editable advanced keys per provider. */
+/** Chaves avançadas editáveis por provider. */
 export function advancedItemsFor(id: ProviderId): AdvancedItem[] {
   switch (id) {
     case 'openrouter':
@@ -85,7 +85,7 @@ export function advancedItemsFor(id: ProviderId): AdvancedItem[] {
   }
 }
 
-// ---------- settings panel message validation ----------
+// ---------- validação de mensagens do painel de configurações ----------
 
 export type SettingKind = 'string' | 'integer' | 'boolean' | 'enum' | 'baseUrl';
 
@@ -96,9 +96,10 @@ export interface SettingSpec {
 }
 
 /**
- * Whitelist of every key the settings panel may write via config.update.
- * Keys are relative to the generateCommit section; provider-scoped keys use
- * the "<id>.<field>" form. Anything outside this map is rejected.
+ * Whitelist de todas as chaves que o painel de configurações pode gravar via
+ * config.update. As chaves são relativas à seção generateCommit; chaves com
+ * escopo de provider usam a forma "<id>.<campo>". Qualquer coisa fora deste
+ * mapa é rejeitada.
  */
 export const PANEL_SETTINGS: Readonly<Record<string, SettingSpec>> = {
   provider: {
@@ -134,13 +135,13 @@ export type ValidatedValue = string | number | boolean;
 export type ValidationResult = { ok: true; value: ValidatedValue } | { ok: false };
 
 /**
- * Validates a value coming from the settings panel webview against the
- * whitelist. Never trust webview messages: unknown keys and type mismatches
- * are rejected.
+ * Valida um valor vindo da webview do painel de configurações contra a
+ * whitelist. Nunca confie em mensagens da webview: chaves desconhecidas e
+ * tipos incompatíveis são rejeitados.
  */
 export function validateSettingValue(key: string, value: unknown): ValidationResult {
-  // Object.hasOwn blocks inherited members (__proto__, constructor, ...),
-  // which would otherwise pass the truthiness check below.
+  // Object.hasOwn bloqueia membros herdados (__proto__, constructor, ...),
+  // que de outra forma passariam na verificação de verdade abaixo.
   const spec = Object.hasOwn(PANEL_SETTINGS, key) ? PANEL_SETTINGS[key] : undefined;
   if (!spec) return { ok: false };
   switch (spec.kind) {
@@ -164,14 +165,14 @@ export function validateSettingValue(key: string, value: unknown): ValidationRes
     case 'string': {
       if (typeof value !== 'string') return { ok: false };
       const trimmed = value.trim();
-      // The Custom… sentinel is a UI control, never a persistable model id.
+      // A sentinela Custom… é um controle de UI, nunca um id de modelo persistível.
       if (key.endsWith('.model') && trimmed === CUSTOM_MODEL_VALUE) return { ok: false };
       return { ok: true, value: trimmed };
     }
   }
 }
 
-/** Narrows provider ids that accept an API key (secret storage targets). */
+/** Restringe os ids de provider que aceitam API key (alvos do secret storage). */
 export function isKeyBackedProvider(
   id: string,
 ): id is 'openrouter' | 'kimi' | 'glm' | 'minimax' | 'anthropicCustom' {
@@ -184,9 +185,9 @@ export function isKeyBackedProvider(
   );
 }
 
-// ---------- model dropdown options ----------
+// ---------- opções do dropdown de modelo ----------
 
-/** Sentinel option in the model select that switches to free-text mode. */
+/** Opção sentinela no select de modelo que alterna para o modo de texto livre. */
 export const CUSTOM_MODEL_VALUE = '__custom';
 
 export interface ModelOption {
@@ -195,10 +196,10 @@ export interface ModelOption {
 }
 
 /**
- * Options for the model dropdown: the provider-default empty option first,
- * the current value when it is not in the catalog (so a custom model never
- * snaps away), every catalog entry except any literal sentinel collision,
- * and the Custom… sentinel at the end.
+ * Opções do dropdown de modelo: primeiro a opção vazia de padrão do provider,
+ * o valor atual quando não está no catálogo (para um modelo customizado nunca
+ * sumir de repente), cada entrada do catálogo exceto qualquer colisão literal
+ * com a sentinela, e a sentinela Custom… no final.
  */
 export function buildModelOptions(
   models: readonly string[],
@@ -215,14 +216,14 @@ export function buildModelOptions(
   return { options, selected: current };
 }
 
-// ---------- settings panel message protocol ----------
+// ---------- protocolo de mensagens do painel de configurações ----------
 
 export type PanelMessage =
   | { type: 'ready' }
   | { type: 'update'; key: string; value: unknown }
   | { type: 'saveKey'; provider: string; value: string; force: boolean };
 
-/** Parses and sanitizes a raw postMessage from the settings panel webview. */
+/** Interpreta e sanitiza um postMessage bruto vindo da webview do painel de configurações. */
 export function parseMessage(raw: unknown): PanelMessage | undefined {
   if (typeof raw !== 'object' || raw === null) return undefined;
   const msg = raw as {

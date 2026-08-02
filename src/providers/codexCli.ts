@@ -11,11 +11,11 @@ export interface CodexCliConfig {
 }
 
 /**
- * Flags verified against `codex exec --help` (codex-cli 0.146.0) and the
- * official config reference (`model_reasoning_effort`: minimal, low, medium,
- * high, xhigh) at 2026-08-02. Note: the `-a/--ask-for-approval` flag vanished
- * from `--help` between two reads on the same day and version (dynamic CLI
- * surface), so the approval policy is pinned via the config key instead.
+ * Flags verificadas contra `codex exec --help` (codex-cli 0.146.0) e a
+ * referência oficial de configuração (`model_reasoning_effort`: minimal, low,
+ * medium, high, xhigh) em 2026-08-02. Nota: a flag `-a/--ask-for-approval`
+ * sumiu do `--help` entre duas leituras no mesmo dia e versão (superfície de
+ * CLI dinâmica), então a política de aprovação é fixada via chave de configuração.
  */
 export function buildCodexArgs(cfg: CodexCliConfig, outputFile: string): string[] {
   const args = [
@@ -44,8 +44,9 @@ export interface CodexCliDeps {
   readonly log?: (line: string) => void;
 }
 
-// Session-scoped cache: createProviders rebuilds instances per command, so
-// the resolved binary path must live at module scope to avoid re-probing.
+// Cache com escopo de sessão: createProviders recria as instâncias a cada
+// comando, então o caminho resolvido do binário precisa viver no escopo do
+// módulo para evitar nova detecção.
 let cachedCodexPath: string | null | undefined;
 
 export function createCodexCliProvider(deps: CodexCliDeps): Provider {
@@ -101,7 +102,7 @@ export function createCodexCliProvider(deps: CodexCliDeps): Provider {
         try {
           text = await readFile(outputFile, 'utf8');
         } catch {
-          // fall back to stdout below
+          // recorre ao stdout abaixo como fallback
         }
         if (!text.trim()) text = result.stdout;
         if (!text.trim()) {

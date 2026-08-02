@@ -61,9 +61,10 @@ export function buildUserPrompt(input: UserPromptInput): string {
 }
 
 /**
- * Normalizes raw model output into a plain commit message: extracts the
- * first fenced code block when present (models often wrap the answer even
- * with preamble around it), then strips a leading label and wrapping quotes.
+ * Normaliza a saída bruta do modelo em uma mensagem de commit simples:
+ * extrai o primeiro bloco de código cercado quando presente (modelos costumam
+ * envolver a resposta mesmo com preâmbulo ao redor), depois remove um rótulo
+ * inicial e aspas envolventes.
  */
 export function parseModelOutput(raw: string): string {
   let text = raw.trim();

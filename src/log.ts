@@ -11,9 +11,9 @@ export function initLog(): vscode.OutputChannel {
 type MetaValue = string | number | boolean | undefined;
 
 /**
- * Metadata-only logging: provider, model, latency, sizes, counts. Never call
- * this with diff contents, API keys or generated messages; values still pass
- * through secret redaction as defense in depth.
+ * Log somente de metadados: provider, model, latência, tamanhos, contagens.
+ * Nunca chame isto com conteúdo de diff, chaves de API ou mensagens geradas;
+ * os valores ainda passam pela redação de segredos como defesa em profundidade.
  */
 export function logMeta(event: string, meta: Record<string, MetaValue> = {}): void {
   const pairs = Object.entries(meta)

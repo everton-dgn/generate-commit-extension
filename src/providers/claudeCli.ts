@@ -8,9 +8,9 @@ export interface ClaudeCliConfig {
 }
 
 /**
- * Flags verified against `claude --help` (Claude Code 2.1.220) at 2026-08-02:
+ * Flags verificadas contra `claude --help` (Claude Code 2.1.220) em 2026-08-02:
  * -p, --tools "", --model, --effort, --output-format, --no-session-persistence.
- * There is no --fast flag in this version (fast mode is interactive-only).
+ * Não existe flag --fast nesta versão (o modo fast é exclusivo do modo interativo).
  */
 export function buildClaudeArgs(cfg: ClaudeCliConfig): string[] {
   const args = ['-p', '--tools', '', '--output-format', 'text', '--no-session-persistence'];
@@ -27,8 +27,9 @@ export interface ClaudeCliDeps {
   readonly log?: (line: string) => void;
 }
 
-// Session-scoped cache: createProviders rebuilds instances per command, so
-// the resolved binary path must live at module scope to avoid re-probing.
+// Cache com escopo de sessão: createProviders recria as instâncias a cada
+// comando, então o caminho resolvido do binário precisa viver no escopo do
+// módulo para evitar nova detecção.
 let cachedClaudePath: string | null | undefined;
 
 export function createClaudeCliProvider(deps: ClaudeCliDeps): Provider {

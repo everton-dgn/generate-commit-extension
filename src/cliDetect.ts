@@ -50,7 +50,7 @@ export interface FindBinaryDeps {
   readonly extraDirs?: readonly string[];
 }
 
-/** Parses the output of `command -v <name>` into an absolute path, if any. */
+/** Interpreta a saída de `command -v <nome>` em um caminho absoluto, se houver. */
 export function parseWhichOutput(stdout: string): string | null {
   for (const line of stdout.split('\n')) {
     const trimmed = line.trim();
@@ -59,7 +59,7 @@ export function parseWhichOutput(stdout: string): string | null {
   return null;
 }
 
-/** Common install locations for CLI tools on macOS/Linux (GUI apps get a minimal PATH). */
+/** Locais comuns de instalação de ferramentas de CLI no macOS/Linux (apps de GUI recebem um PATH mínimo). */
 export function candidatePaths(
   name: string,
   home: string,
@@ -81,14 +81,15 @@ const PATH_LOOKUP_TIMEOUT_MS = 5000;
 const LOGIN_SHELL_TIMEOUT_MS = 8000;
 
 /**
- * Resolves a CLI binary: first via the inherited PATH, then via the user's
- * login shell (fixes GUI launches on macOS), then via common absolute paths.
+ * Resolve um binário de CLI: primeiro via PATH herdado, depois via shell de
+ * login do usuário (corrige lançamentos por GUI no macOS) e, por fim, via
+ * caminhos absolutos comuns.
  */
 export async function findBinary(
   name: string,
   deps?: Partial<FindBinaryDeps>,
 ): Promise<string | null> {
-  // Name is passed to a shell below; reject anything beyond a plain binary name.
+  // O nome é passado a um shell abaixo; rejeita qualquer coisa além de um nome simples de binário.
   if (!/^[A-Za-z0-9._-]+$/.test(name)) return null;
   const d: FindBinaryDeps = {
     exec: defaultExec,
@@ -104,7 +105,7 @@ export async function findBinary(
     const path = parseWhichOutput(r.stdout);
     if (r.code === 0 && path) return path;
   } catch {
-    // keep trying other strategies
+    // continua tentando as outras estratégias
   }
   try {
     const r = await d.exec(d.shell, ['-lic', 'command -v "$1"', 'sh', name], {
@@ -113,7 +114,7 @@ export async function findBinary(
     const path = parseWhichOutput(r.stdout);
     if (r.code === 0 && path) return path;
   } catch {
-    // keep trying other strategies
+    // continua tentando as outras estratégias
   }
   for (const path of candidatePaths(name, d.home, d.extraDirs ?? [])) {
     if (await d.isExecutable(path)) return path;

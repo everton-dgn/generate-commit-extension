@@ -28,15 +28,15 @@ export function registerCommands(context: vscode.ExtensionContext): void {
   );
 }
 
-/** Routes the user to the settings panel (sidebar). */
+/** Direciona o usuário para o painel de configurações (barra lateral). */
 async function openSettingsPanel(): Promise<void> {
   await vscode.commands.executeCommand(`${SETTINGS_VIEW_ID}.focus`);
 }
 
 /**
- * One generation per repository: starting a new one aborts the previous and
- * only the latest run may write to the input box (slow responses from older
- * runs are discarded).
+ * Uma geração por repositório: iniciar uma nova aborta a anterior e
+ * somente a execução mais recente pode escrever na input box (respostas
+ * lentas de execuções antigas são descartadas).
  */
 const activeGenerations = new Map<string, { id: number; controller: AbortController }>();
 let generationSeq = 0;
