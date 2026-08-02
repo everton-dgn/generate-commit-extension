@@ -151,3 +151,43 @@ describe('LANGUAGE_OPTIONS', () => {
     expect(codes).toContain('pt-BR');
   });
 });
+
+describe('parseMessage', () => {
+  it('parses the three protocol shapes', async () => {
+    const { parseMessage } = await import('../src/settingsModel');
+    expect(parseMessage({ type: 'ready' })).toEqual({ type: 'ready' });
+    expect(parseMessage({ type: 'update', key: 'language', value: 'en' })).toEqual({
+      type: 'update',
+      key: 'language',
+      value: 'en',
+    });
+    expect(parseMessage({ type: 'saveKey', provider: 'glm', value: 'k' })).toEqual({
+      type: 'saveKey',
+      provider: 'glm',
+      value: 'k',
+      force: false,
+    });
+    expect(parseMessage({ type: 'saveKey', provider: 'glm', value: 'k', force: true })).toEqual({
+      type: 'saveKey',
+      provider: 'glm',
+      value: 'k',
+      force: true,
+    });
+  });
+
+  it('rejects malformed and hostile messages', async () => {
+    const { parseMessage } = await import('../src/settingsModel');
+    expect(parseMessage(null)).toBeUndefined();
+    expect(parseMessage('update')).toBeUndefined();
+    expect(parseMessage({ type: 'nope' })).toBeUndefined();
+    expect(parseMessage({ type: 'update', value: 'x' })).toBeUndefined();
+    expect(parseMessage({ type: 'update', key: 42, value: 'x' })).toBeUndefined();
+    expect(parseMessage({ type: 'saveKey', provider: 'glm' })).toBeUndefined();
+    expect(parseMessage({ type: 'saveKey', provider: 'glm', value: 'k', force: 'yes' })).toEqual({
+      type: 'saveKey',
+      provider: 'glm',
+      value: 'k',
+      force: false,
+    });
+  });
+});

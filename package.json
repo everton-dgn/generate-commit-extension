@@ -206,7 +206,8 @@
       "generateCommit": [
         {
           "id": "generateCommit.settingsView",
-          "name": "Settings"
+          "name": "Settings",
+          "type": "webview"
         }
       ]
     }

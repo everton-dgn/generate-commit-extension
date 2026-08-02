@@ -88,9 +88,11 @@ Notas:
 
 ### Configurar uma chave de API
 
-Comando `Generate Commit: Configure API Key`: escolha o provider, cole a
-chave (campo mascarado), aguarde a validação rápida e pronto. A chave fica em
-`context.secrets` (Secret Storage do VS Code), **nunca** em `settings.json`.
+No painel **Generate Commit** da barra lateral, seção **API keys**: cole a
+chave do provider (campo de senha, nunca pré-preenchido), clique em Save e
+aguarde a validação rápida. O status fica visível ao lado do provider
+(configured/not set). A chave fica em `context.secrets` (Secret Storage do
+VS Code), **nunca** em `settings.json` e nunca renderizada no painel.
 
 ## Settings
 

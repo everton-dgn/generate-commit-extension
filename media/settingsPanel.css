@@ -114,6 +114,23 @@ button:hover {
   color: var(--vscode-testing-iconFailed, #f14c4c);
 }
 
+.force-save {
+  margin-left: 6px;
+  padding: 1px 6px;
+  font-size: 0.85em;
+}
+
+.invalid-flash {
+  border-color: var(--vscode-inputValidation-errorBorder, #f14c4c);
+}
+
+.status-line {
+  color: var(--vscode-inputValidation-errorForeground, #f14c4c);
+  font-size: 0.85em;
+  min-height: 1.2em;
+  margin: 4px 0 0;
+}
+
 details {
   margin: 6px 0;
   border: 1px solid var(--vscode-panel-border, transparent);

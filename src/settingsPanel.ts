@@ -8,7 +8,12 @@ import {
   createProviders,
   validateApiKey,
 } from './providersRuntime';
-import { isKeyBackedProvider, LANGUAGE_OPTIONS, validateSettingValue } from './settingsModel';
+import {
+  isKeyBackedProvider,
+  LANGUAGE_OPTIONS,
+  parseMessage,
+  validateSettingValue,
+} from './settingsModel';
 import type { ProviderId } from './types';
 
 export const SETTINGS_VIEW_ID = 'generateCommit.settingsView';
@@ -42,24 +47,6 @@ interface PanelState {
   readonly languages: readonly { code: string; label: string }[];
 }
 
-type PanelMessage =
-  | { type: 'ready' }
-  | { type: 'update'; key: string; value: unknown }
-  | { type: 'saveKey'; provider: string; value: string };
-
-function parseMessage(raw: unknown): PanelMessage | undefined {
-  if (typeof raw !== 'object' || raw === null) return undefined;
-  const msg = raw as { type?: unknown; key?: unknown; value?: unknown; provider?: unknown };
-  if (msg.type === 'ready') return { type: 'ready' };
-  if (msg.type === 'update' && typeof msg.key === 'string') {
-    return { type: 'update', key: msg.key, value: msg.value };
-  }
-  if (msg.type === 'saveKey' && typeof msg.provider === 'string' && typeof msg.value === 'string') {
-    return { type: 'saveKey', provider: msg.provider, value: msg.value };
-  }
-  return undefined;
-}
-
 /**
  * Sidebar settings panel: a strictly sandboxed WebviewView (CSP default-src
  * 'none', only bundled local media, no remote content, no inline code).
@@ -72,7 +59,11 @@ export class SettingsPanelProvider implements vscode.WebviewViewProvider {
 
   constructor(private readonly context: vscode.ExtensionContext) {
     this.listener = vscode.workspace.onDidChangeConfiguration((event) => {
-      if (event.affectsConfiguration(SECTION)) void this.pushState();
+      if (event.affectsConfiguration(SECTION)) {
+        this.pushState().catch((err: unknown) => {
+          logMeta('panel.stateError', { detail: err instanceof Error ? err.name : 'unknown' });
+        });
+      }
     });
   }
 
@@ -87,8 +78,41 @@ export class SettingsPanelProvider implements vscode.WebviewViewProvider {
       localResourceRoots: [vscode.Uri.joinPath(this.context.extensionUri, 'media')],
     };
     view.webview.html = this.renderHtml(view.webview);
+    view.onDidDispose(
+      () => {
+        this.view = undefined;
+      },
+      undefined,
+      this.context.subscriptions,
+    );
     view.webview.onDidReceiveMessage(
-      (message: unknown) => void this.handleMessage(message),
+      (message: unknown) => {
+        this.handleMessage(message).catch((err: unknown) => {
+          // Never leave the form hanging: report unexpected failures back.
+          logMeta('panel.messageError', { detail: err instanceof Error ? err.name : 'unknown' });
+          const msg = (typeof message === 'object' && message !== null ? message : {}) as {
+            type?: unknown;
+            provider?: unknown;
+            key?: unknown;
+          };
+          if (msg.type === 'saveKey' && typeof msg.provider === 'string' && this.view) {
+            void this.view.webview.postMessage({
+              type: 'keyResult',
+              provider: msg.provider,
+              ok: false,
+              reason: 'unexpected error',
+            });
+          }
+          if (msg.type === 'update' && typeof msg.key === 'string' && this.view) {
+            void this.view.webview.postMessage({
+              type: 'updateResult',
+              key: msg.key,
+              ok: false,
+              reason: 'failed to apply the setting',
+            });
+          }
+        });
+      },
       undefined,
       this.context.subscriptions,
     );
@@ -135,9 +159,15 @@ export class SettingsPanelProvider implements vscode.WebviewViewProvider {
     };
   }
 
+  private stateSeq = 0;
+
   private async pushState(): Promise<void> {
     if (!this.view) return;
+    // buildState is slow (availability probing): only the latest call may
+    // publish, so rapid config changes never render a stale snapshot.
+    const seq = ++this.stateSeq;
     const state = await this.buildState();
+    if (!this.view || seq !== this.stateSeq) return;
     await this.view.webview.postMessage({ type: 'state', state });
   }
 
@@ -152,6 +182,15 @@ export class SettingsPanelProvider implements vscode.WebviewViewProvider {
       const result = validateSettingValue(message.key, message.value);
       if (!result.ok) {
         logMeta('settings.rejected', { key: message.key });
+        // Tell the form so the field reverts instead of silently diverging.
+        if (this.view) {
+          await this.view.webview.postMessage({
+            type: 'updateResult',
+            key: message.key,
+            ok: false,
+            reason: 'invalid value',
+          });
+        }
         return;
       }
       await vscode.workspace
@@ -161,11 +200,11 @@ export class SettingsPanelProvider implements vscode.WebviewViewProvider {
       return;
     }
     if (message.type === 'saveKey') {
-      await this.handleSaveKey(message.provider, message.value);
+      await this.handleSaveKey(message.provider, message.value, message.force);
     }
   }
 
-  private async handleSaveKey(provider: string, value: string): Promise<void> {
+  private async handleSaveKey(provider: string, value: string, force: boolean): Promise<void> {
     if (!this.view || !isKeyBackedProvider(provider)) return;
     const key = value.trim();
     if (key.length < MIN_KEY_LENGTH) {
@@ -177,11 +216,24 @@ export class SettingsPanelProvider implements vscode.WebviewViewProvider {
       });
       return;
     }
+    // Force = explicit user override after a failed validation (flaky
+    // network or a down endpoint must not block saving entirely).
+    if (force) {
+      await this.context.secrets.store(secretKeyFor(provider), key);
+      logMeta('secrets.stored', { provider, validated: false });
+      await this.view.webview.postMessage({
+        type: 'keyResult',
+        provider,
+        ok: true,
+        reason: 'saved without verification',
+      });
+      await this.pushState();
+      return;
+    }
     const validation = await validateApiKey(provider, key);
     if (validation.ok) {
       await this.context.secrets.store(secretKeyFor(provider), key);
       logMeta('secrets.stored', { provider });
-      await this.pushState();
     } else {
       logMeta('secrets.rejected', { provider });
     }
@@ -190,7 +242,9 @@ export class SettingsPanelProvider implements vscode.WebviewViewProvider {
       provider,
       ok: validation.ok,
       reason: validation.reason,
+      allowForce: !validation.ok,
     });
+    if (validation.ok) await this.pushState();
   }
 
   private renderHtml(webview: vscode.Webview): string {

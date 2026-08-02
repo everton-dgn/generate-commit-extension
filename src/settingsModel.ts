@@ -178,3 +178,30 @@ export function isKeyBackedProvider(
     id === 'anthropicCustom'
   );
 }
+
+// ---------- settings panel message protocol ----------
+
+export type PanelMessage =
+  | { type: 'ready' }
+  | { type: 'update'; key: string; value: unknown }
+  | { type: 'saveKey'; provider: string; value: string; force: boolean };
+
+/** Parses and sanitizes a raw postMessage from the settings panel webview. */
+export function parseMessage(raw: unknown): PanelMessage | undefined {
+  if (typeof raw !== 'object' || raw === null) return undefined;
+  const msg = raw as {
+    type?: unknown;
+    key?: unknown;
+    value?: unknown;
+    provider?: unknown;
+    force?: unknown;
+  };
+  if (msg.type === 'ready') return { type: 'ready' };
+  if (msg.type === 'update' && typeof msg.key === 'string') {
+    return { type: 'update', key: msg.key, value: msg.value };
+  }
+  if (msg.type === 'saveKey' && typeof msg.provider === 'string' && typeof msg.value === 'string') {
+    return { type: 'saveKey', provider: msg.provider, value: msg.value, force: msg.force === true };
+  }
+  return undefined;
+}

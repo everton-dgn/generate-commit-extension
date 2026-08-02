@@ -26,8 +26,8 @@ Esse é o único dado que sai da máquina, e estas são as camadas de proteção
 
 ### 2. Minimização do que é enviado
 
-- Lockfiles, binários, minificados e arquivos acima de
-  `generateCommit.maxFileSizeKB` (medido em bytes) são excluídos do diff.
+- Lockfiles, binários, minificados e arquivos cujo chunk de diff excede
+  `generateCommit.maxFileSizeKB` × 1024 bytes são excluídos do diff.
 - O diff total é truncado em `generateCommit.maxDiffChars`, na fronteira de
   arquivo, com aviso explícito no prompt.
 - Commits recentes (apenas assuntos) só são incluídos se
@@ -38,9 +38,11 @@ Esse é o único dado que sai da máquina, e estas são as camadas de proteção
 - Armazenadas **somente** em `context.secrets` (SecretStorage do VS Code,
   com suporte a keychain do sistema operacional).
 - Nunca em `settings.json`, nunca em logs, nunca em mensagens de erro.
-- A validação de chave usa uma requisição mínima (`max_tokens: 8`) e só
-  rejeita a chave em falha de autenticação; respostas do endpoint (limite,
-  créditos, erro de servidor) contam como chave aceita.
+- A validação de chave usa uma requisição mínima (`max_tokens: 8`). Falha
+  de autenticação invalida a chave; respostas do endpoint que não sejam de
+  autenticação (limite, créditos, erro de servidor, payload rejeitado)
+  confirmam que a chave foi aceita; falhas sem resposta (rede, timeout)
+  deixam a chave não verificada e impedem o salvamento pelo painel.
 
 ### 4. Transporte e rede
 

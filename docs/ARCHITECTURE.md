@@ -9,8 +9,8 @@ providers e as decisões estruturais. Para o modelo de segurança, veja
 
 | Arquivo | Papel |
 |---------|-------|
-| `src/extension.ts` | Ativação: Output Channel, comandos, TreeView do painel. |
-| `src/commands.ts` | Comandos `generate`, `switchProvider`, `configure` e o orquestrador do fluxo de geração. |
+| `src/extension.ts` | Ativação: Output Channel, comandos e o painel de settings (WebviewView). |
+| `src/commands.ts` | Comando `generate` e o orquestrador do fluxo de geração; ações de erro abrem o painel. |
 | `src/git.ts` | Acesso à extensão Git built-in (`vscode.git` API v1), resolução multi-repo, diffs e log recente. |
 | `src/config.ts` | Leitura e validação das settings (`generateCommit.*`) e chaves do SecretStorage. |
 | `src/providers/` | Interface única + implementações (detalhes abaixo). |
@@ -30,8 +30,8 @@ providers e as decisões estruturais. Para o modelo de segurança, veja
 ## Fluxo de ativação
 
 1. `activate()` cria o Output Channel "Generate Commit".
-2. Registra os comandos (`generateCommit.generate`, `.switchProvider`,
-   `.configure`, `.settings`, `.editSetting`).
+2. Registra os comandos (`generateCommit.generate` e `.settings`, que foca
+   o painel).
 3. Registra o `SettingsPanelProvider` na view `generateCommit.settingsView`
    (painel da Activity Bar), uma WebviewView sandboxed que hospeda o
    formulário de configurações.
@@ -44,7 +44,7 @@ telemetria.
 ## Fluxo de geração (`generateCommit.generate`)
 
 1. **Repositório**: o argumento do comando traz `rootUri` (menu
-   `scm/inputBox`) ou um `SourceControl` (`scm/title`). Resolve via
+   `scm/inputBox`); pela Command Palette, sem argumento. Resolve via
    `api.getRepository(uri)`; com um único repo, usa direto; ambíguo, abre
    QuickPick.
 2. **Diff**: `repo.diff(true)` (staged). Vazio → setting
@@ -116,7 +116,7 @@ interface Provider {
 3. Adicionar o id ao union `ProviderId` em `types.ts`, aos defaults em
    `config.ts` e às settings em `package.json`
    (`generateCommit.<id>.model`, etc.).
-4. Instanciar em `createProviders` (`commands.ts`).
+4. Instanciar em `createProviders` (`src/providersRuntime.ts`).
 5. Testes: parser/builder puros em `tests/providers.test.ts` e fluxo de
    `generate` com mocks em `tests/providers-generate.test.ts`.
 

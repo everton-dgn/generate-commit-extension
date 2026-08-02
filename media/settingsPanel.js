@@ -11,7 +11,9 @@
       state = message.state;
       render();
     } else if (message.type === 'keyResult') {
-      showKeyResult(message.provider, message.ok, message.reason);
+      showKeyResult(message.provider, message.ok, message.reason, message.allowForce);
+    } else if (message.type === 'updateResult') {
+      showUpdateResult(message.key, message.ok, message.reason);
     }
   });
 
@@ -34,6 +36,8 @@
     return wrap;
   }
 
+  const pendingKeys = {};
+
   function textInput(key, value, placeholder, type) {
     const input = el('input', 'control');
     input.type = type || 'text';
@@ -41,7 +45,18 @@
     input.placeholder = placeholder || 'provider default';
     input.dataset.key = key;
     input.spellcheck = false;
-    input.addEventListener('change', () => sendUpdate(key, input.value));
+    let timer = null;
+    input.addEventListener('input', () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => sendUpdate(key, input.value), 350);
+    });
+    input.addEventListener('change', () => {
+      if (timer) {
+        clearTimeout(timer);
+        timer = null;
+      }
+      sendUpdate(key, input.value);
+    });
     return input;
   }
 
@@ -91,9 +106,11 @@
     section.append(field('Active provider', selectInput('provider', state.provider, options)));
     const active = providerById(state.provider);
     if (active) {
-      section.append(
-        field('Model', textInput(`${active.id}.model`, active.model), active.availabilityNote),
-      );
+      const modelInput = textInput(`${active.id}.model`, active.model);
+      // Distinct focus identity: the advanced section has a field with the
+      // same config key for this provider.
+      modelInput.dataset.fkey = `main:${active.id}.model`;
+      section.append(field('Model', modelInput, active.availabilityNote));
     }
     return section;
   }
@@ -181,6 +198,7 @@
       button.addEventListener('click', () => {
         const status = row.querySelector('.key-status');
         if (status) status.textContent = 'validating...';
+        pendingKeys[provider.id] = input.value;
         vscode.postMessage({ type: 'saveKey', provider: provider.id, value: input.value });
         input.value = '';
       });
@@ -255,8 +273,12 @@
   function render() {
     if (!state || !app) return;
     const focused = document.activeElement;
-    const focusedKey = focused?.dataset ? focused.dataset.key : null;
+    const focusedKey = focused?.dataset ? focused.dataset.fkey || focused.dataset.key : null;
     const focusedValue = focusedKey ? focused.value : null;
+    const focusedSel =
+      focusedKey && typeof focused.selectionStart === 'number'
+        ? [focused.selectionStart, focused.selectionEnd]
+        : null;
     app.textContent = '';
     app.append(
       renderProviderSection(),
@@ -266,20 +288,90 @@
       renderAdvancedSection(),
     );
     if (focusedKey) {
-      const again = app.querySelector(`[data-key="${focusedKey}"]`);
+      const again =
+        app.querySelector(`[data-fkey="${focusedKey}"]`) ??
+        app.querySelector(`[data-key="${focusedKey}"]`);
       if (again) {
         again.focus();
-        if (focusedValue !== null && 'value' in again) again.value = focusedValue;
+        if (focusedValue !== null && 'value' in again) {
+          again.value = focusedValue;
+          if (focusedSel && again.setSelectionRange) {
+            again.setSelectionRange(focusedSel[0], focusedSel[1]);
+          }
+        }
       }
     }
   }
 
-  function showKeyResult(provider, ok, reason) {
+  function showKeyResult(provider, ok, reason, allowForce) {
     if (!app) return;
     const status = app.querySelector(`[data-provider-status="${provider}"] .key-status`);
     if (!status) return;
-    status.textContent = ok ? 'configured' : `invalid: ${reason}`;
-    status.className = ok ? 'key-status status-ok' : 'key-status status-missing';
+    if (ok) {
+      delete pendingKeys[provider];
+      status.textContent = reason ? `configured (${reason})` : 'configured';
+      status.className = 'key-status status-ok';
+      return;
+    }
+    status.textContent = `invalid: ${reason}`;
+    status.className = 'key-status status-missing';
+    if (allowForce && pendingKeys[provider]) {
+      const forceBtn = el('button', 'force-save', 'Save anyway');
+      forceBtn.addEventListener('click', () => {
+        status.textContent = 'saving...';
+        vscode.postMessage({
+          type: 'saveKey',
+          provider,
+          value: pendingKeys[provider],
+          force: true,
+        });
+      });
+      status.append(document.createTextNode(' '), forceBtn);
+    }
+  }
+
+  function stateValueFor(key) {
+    if (!state) return '';
+    if (Object.hasOwn(state, key)) return state[key];
+    const dot = key.indexOf('.');
+    if (dot > 0) {
+      const provider = providerById(key.slice(0, dot));
+      if (provider) {
+        const field = key.slice(dot + 1);
+        if (field === 'model') return provider.model;
+        if (field === 'baseUrl') return provider.baseUrl;
+        if (field === 'authHeader') return provider.authHeader;
+        if (field === 'effort') return provider.effort;
+      }
+    }
+    return '';
+  }
+
+  let statusTimer = null;
+
+  function showStatus(text) {
+    let bar = document.getElementById('gc-status');
+    if (!bar) {
+      bar = el('div', 'status-line');
+      bar.id = 'gc-status';
+      document.body.insertBefore(bar, app);
+    }
+    bar.textContent = text;
+    if (statusTimer) clearTimeout(statusTimer);
+    statusTimer = setTimeout(() => {
+      bar.textContent = '';
+    }, 2500);
+  }
+
+  function showUpdateResult(key, ok, reason) {
+    if (ok || !app) return;
+    const input = app.querySelector(`[data-key="${key}"]`);
+    if (input && 'value' in input) {
+      input.value = stateValueFor(key);
+      input.classList.add('invalid-flash');
+      setTimeout(() => input.classList.remove('invalid-flash'), 2000);
+    }
+    showStatus(`Not applied: ${reason}`);
   }
 
   vscode.postMessage({ type: 'ready' });
