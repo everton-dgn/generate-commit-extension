@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { readAppConfig, readProviderConfig } from './config';
 import { logMeta } from './log';
-import { PROVIDERS, providerMeta } from './providers/registry';
+import { isProviderId, PROVIDERS, providerMeta } from './providers/registry';
 import {
   type AdvancedItem,
   advancedItemsFor,
@@ -110,20 +110,23 @@ async function editUnstagedFallback(current: string): Promise<void> {
   if (pick) await update('unstagedFallback', pick.value);
 }
 
-async function editAdvanced(): Promise<void> {
-  interface ProviderItem extends vscode.QuickPickItem {
-    id: ProviderId;
+async function editAdvanced(preselected?: ProviderId): Promise<void> {
+  let id = preselected;
+  if (!id) {
+    interface ProviderItem extends vscode.QuickPickItem {
+      id: ProviderId;
+    }
+    const providerPick = await vscode.window.showQuickPick<ProviderItem>(
+      PROVIDERS.map((meta) => ({
+        label: meta.label,
+        description: readProviderConfig(meta.id).model || 'provider default',
+        id: meta.id,
+      })),
+      { placeHolder: 'Select the provider to configure' },
+    );
+    if (!providerPick) return;
+    id = providerPick.id;
   }
-  const providerPick = await vscode.window.showQuickPick<ProviderItem>(
-    PROVIDERS.map((meta) => ({
-      label: meta.label,
-      description: readProviderConfig(meta.id).model || 'provider default',
-      id: meta.id,
-    })),
-    { placeHolder: 'Select the provider to configure' },
-  );
-  if (!providerPick) return;
-  const id = providerPick.id;
   const meta = providerMeta(id);
   const items = advancedItemsFor(id);
   interface AdvItem extends vscode.QuickPickItem {
@@ -173,7 +176,7 @@ async function editAdvanced(): Promise<void> {
   await update(key, input.trim());
 }
 
-async function handleSettingsItem(id: SettingsItemId): Promise<void> {
+export async function handleSettingsItem(id: SettingsItemId): Promise<void> {
   const cfg = readAppConfig();
   switch (id) {
     case 'provider':
@@ -201,6 +204,30 @@ async function handleSettingsItem(id: SettingsItemId): Promise<void> {
   }
 }
 
+const ADVANCED_PROVIDER_PREFIX = 'advancedProvider:';
+
+/**
+ * Runs one settings edit with error resilience. Entry points: the settings
+ * QuickPick loop and the sidebar tree (generateCommit.editSetting).
+ */
+export async function runSettingsEdit(arg: string): Promise<void> {
+  try {
+    if (arg.startsWith(ADVANCED_PROVIDER_PREFIX)) {
+      const id = arg.slice(ADVANCED_PROVIDER_PREFIX.length);
+      if (isProviderId(id)) return await editAdvanced(id);
+      return;
+    }
+    await handleSettingsItem(arg as SettingsItemId);
+  } catch (err) {
+    // config.update can reject (policy-locked or invalid values): keep the
+    // menu usable and surface the failure instead of crashing the command.
+    logMeta('settings.error', { detail: err instanceof Error ? err.name : 'unknown' });
+    void vscode.window.showErrorMessage(
+      `Generate Commit: failed to apply the setting (${err instanceof Error ? err.message : String(err)})`,
+    );
+  }
+}
+
 /** Master settings menu: loops until the user dismisses it. */
 export async function settingsCommand(): Promise<void> {
   for (;;) {
@@ -208,15 +235,6 @@ export async function settingsCommand(): Promise<void> {
       placeHolder: 'Generate Commit settings (Esc to close)',
     });
     if (!pick) return;
-    try {
-      await handleSettingsItem(pick.id);
-    } catch (err) {
-      // config.update can reject (policy-locked or invalid values): keep the
-      // menu usable and surface the failure instead of crashing the command.
-      logMeta('settings.error', { detail: err instanceof Error ? err.name : 'unknown' });
-      void vscode.window.showErrorMessage(
-        `Generate Commit: failed to apply the setting (${err instanceof Error ? err.message : String(err)})`,
-      );
-    }
+    await runSettingsEdit(pick.id);
   }
 }

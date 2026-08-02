@@ -20,10 +20,8 @@ codium --enable-proposed-api=everton.generate-commit
 ```
 
 Sem esse flag, o menu `scm/inputBox` é rejeitado silenciosamente e a extensão
-segue funcionando pelos pontos estáveis, sempre visíveis:
-
-- botão na barra de título do painel Source Control (`scm/title`);
-- Command Palette: `Generate Commit: Generate Commit Message`.
+segue funcionando pela Command Palette (`Generate Commit: Generate Commit
+Message`) e pelo painel Generate Commit na barra lateral esquerda.
 
 Em modo de desenvolvimento (F5), a proposta funciona sem flags.
 
@@ -37,9 +35,12 @@ Em modo de desenvolvimento (F5), a proposta funciona sem flags.
   chamada HTTP ou mata o processo do CLI.
 - Troca rápida de provider/modelo pelo comando `Generate Commit: Switch
   Provider / Model`.
-- Todas as configurações pela UI: o comando `Generate Commit: Settings`
-  abre um menu com cada opção e seu valor atual (idioma, limites, prompt
-  customizado, timeout, base URLs, esforço dos CLIs), sem editar JSON.
+- Painel **Generate Commit** na barra lateral esquerda (ícone de
+  estrelinhas): todas as configurações em árvore com o valor atual de cada
+  uma (provider, chave, idioma, limites, prompt customizado, fallback,
+  timeout, e um nó avançado por provider com baseUrl, authHeader e esforço),
+  edição por clique, sem editar JSON. O mesmo menu existe no comando
+  `Generate Commit: Settings`.
 - Primeiro uso guiado: sem nenhum provider disponível, o fluxo abre a
   configuração (escolha do provider, chave mascarada, validação rápida,
   salvamento no Secret Storage).
@@ -94,9 +95,10 @@ chave (campo mascarado), aguarde a validação rápida e pronto. A chave fica em
 
 ## Settings
 
-Todas as opções abaixo também podem ser alteradas pela interface, no comando
-`Generate Commit: Settings` (menu com valor atual, QuickPicks e campos
-validados), além da tela de Settings do editor (filtre por `generateCommit`).
+Todas as opções abaixo também podem ser alteradas pela interface, no painel
+**Generate Commit** da barra lateral ou no comando `Generate Commit:
+Settings` (menu com valor atual, QuickPicks e campos validados), além da
+tela de Settings do editor (filtre por `generateCommit`).
 
 | Setting | Default | Descrição |
 |---------|---------|-----------|

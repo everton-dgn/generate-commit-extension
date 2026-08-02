@@ -1,5 +1,6 @@
 import type * as vscode from 'vscode';
 import type { AppConfig } from './config';
+import { PROVIDERS } from './providers/registry';
 import type { ProviderId } from './types';
 
 /** Parses a positive integer setting; undefined when invalid or below min. */
@@ -55,48 +56,93 @@ export interface SettingsItem extends vscode.QuickPickItem {
   readonly id: SettingsItemId;
 }
 
+interface ItemMeta {
+  readonly id: SettingsItemId;
+  readonly iconId: string;
+  readonly label: string;
+}
+
+const ITEM_META: readonly ItemMeta[] = [
+  { id: 'provider', iconId: 'hubot', label: 'Provider and model' },
+  { id: 'apiKey', iconId: 'key', label: 'API key' },
+  { id: 'language', iconId: 'globe', label: 'Message language' },
+  { id: 'maxDiffChars', iconId: 'fold', label: 'Max diff characters' },
+  { id: 'maxFileSizeKB', iconId: 'file', label: 'Max file size (KB)' },
+  { id: 'includeRecentCommits', iconId: 'history', label: 'Recent commits as style context' },
+  { id: 'customPrompt', iconId: 'edit', label: 'Custom prompt instructions' },
+  { id: 'unstagedFallback', iconId: 'git-pull-request', label: 'When no staged changes' },
+  { id: 'timeoutSeconds', iconId: 'watch', label: 'Timeout (seconds)' },
+  { id: 'advanced', iconId: 'settings-gear', label: 'Advanced per provider' },
+];
+
+function descriptionFor(id: SettingsItemId, cfg: AppConfig): string {
+  switch (id) {
+    case 'provider':
+      return cfg.provider;
+    case 'apiKey':
+      return 'configure or update';
+    case 'language':
+      return cfg.language;
+    case 'maxDiffChars':
+      return String(cfg.maxDiffChars);
+    case 'maxFileSizeKB':
+      return String(cfg.maxFileSizeKB);
+    case 'includeRecentCommits':
+      return cfg.includeRecentCommits ? 'on' : 'off';
+    case 'customPrompt':
+      return cfg.customPrompt.trim() ? 'set' : 'empty';
+    case 'unstagedFallback':
+      return cfg.unstagedFallback;
+    case 'timeoutSeconds':
+      return String(cfg.timeoutSeconds);
+    case 'advanced':
+      return 'baseUrl, authHeader, effort';
+  }
+}
+
 /** Master menu: every user-facing setting, with its current value. */
 export function buildSettingsMenu(cfg: AppConfig): SettingsItem[] {
-  return [
-    { id: 'provider', label: '$(hubot) Provider and model…', description: cfg.provider },
-    { id: 'apiKey', label: '$(key) API key…', description: 'configure or update' },
-    { id: 'language', label: '$(globe) Message language…', description: cfg.language },
-    {
-      id: 'maxDiffChars',
-      label: '$(fold) Max diff characters…',
-      description: String(cfg.maxDiffChars),
-    },
-    {
-      id: 'maxFileSizeKB',
-      label: '$(file) Max file size (KB)…',
-      description: String(cfg.maxFileSizeKB),
-    },
-    {
-      id: 'includeRecentCommits',
-      label: '$(history) Recent commits as style context…',
-      description: cfg.includeRecentCommits ? 'on' : 'off',
-    },
-    {
-      id: 'customPrompt',
-      label: '$(edit) Custom prompt instructions…',
-      description: cfg.customPrompt.trim() ? 'set' : 'empty',
-    },
-    {
-      id: 'unstagedFallback',
-      label: '$(git-pull-request) When no staged changes…',
-      description: cfg.unstagedFallback,
-    },
-    {
-      id: 'timeoutSeconds',
-      label: '$(watch) Timeout (seconds)…',
-      description: String(cfg.timeoutSeconds),
-    },
-    {
-      id: 'advanced',
-      label: '$(settings-gear) Advanced per provider…',
-      description: 'baseUrl, authHeader, effort',
-    },
-  ];
+  return ITEM_META.map((meta) => ({
+    id: meta.id,
+    label: `$(${meta.iconId}) ${meta.label}…`,
+    description: descriptionFor(meta.id, cfg),
+  }));
+}
+
+export interface SettingsTreeNode {
+  readonly id: SettingsItemId;
+  readonly label: string;
+  readonly iconId: string;
+  readonly description: string;
+  readonly collapsible: boolean;
+}
+
+/** Sidebar tree rows: same settings, plain labels plus codicon ids. */
+export function buildSettingsTree(cfg: AppConfig): SettingsTreeNode[] {
+  return ITEM_META.map((meta) => ({
+    id: meta.id,
+    label: meta.label,
+    iconId: meta.iconId,
+    description: descriptionFor(meta.id, cfg),
+    collapsible: meta.id === 'advanced',
+  }));
+}
+
+export interface AdvancedTreeChild {
+  readonly id: string;
+  readonly label: string;
+  readonly description: string;
+}
+
+/** Children of the "Advanced per provider" tree node. */
+export function buildAdvancedChildren(
+  models: Readonly<Record<ProviderId, string>>,
+): AdvancedTreeChild[] {
+  return PROVIDERS.map((meta) => ({
+    id: `advancedProvider:${meta.id}`,
+    label: meta.label,
+    description: models[meta.id] || 'provider default',
+  }));
 }
 
 export interface AdvancedItem {

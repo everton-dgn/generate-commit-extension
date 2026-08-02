@@ -3,7 +3,9 @@ import type { AppConfig } from '../src/config';
 import { PROVIDERS } from '../src/providers/registry';
 import {
   advancedItemsFor,
+  buildAdvancedChildren,
   buildSettingsMenu,
+  buildSettingsTree,
   isValidBaseUrl,
   parseIntSetting,
 } from '../src/settingsModel';
@@ -96,5 +98,60 @@ describe('buildSettingsMenu', () => {
     expect(menu.find((i) => i.id === 'language')?.description).toBe('pt-BR');
     expect(menu.find((i) => i.id === 'timeoutSeconds')?.description).toBe('60');
     expect(menu.find((i) => i.id === 'provider')?.description).toBe('glm');
+  });
+});
+
+describe('buildSettingsTree', () => {
+  const cfg: AppConfig = {
+    provider: 'claudeCli',
+    language: 'en',
+    maxDiffChars: 50000,
+    maxFileSizeKB: 50,
+    includeRecentCommits: false,
+    customPrompt: 'be terse',
+    unstagedFallback: 'never',
+    timeoutSeconds: 30,
+  };
+
+  it('mirrors the settings menu with plain labels and codicon ids', () => {
+    const tree = buildSettingsTree(cfg);
+    expect(tree.map((n) => n.id)).toEqual(buildSettingsMenu(cfg).map((i) => i.id));
+    const language = tree.find((n) => n.id === 'language');
+    expect(language?.label).toBe('Message language');
+    expect(language?.iconId).toBe('globe');
+    expect(language?.description).toBe('en');
+  });
+
+  it('marks only the advanced node as collapsible', () => {
+    const tree = buildSettingsTree(cfg);
+    expect(tree.filter((n) => n.collapsible).map((n) => n.id)).toEqual(['advanced']);
+  });
+
+  it('reflects current values', () => {
+    const tree = buildSettingsTree(cfg);
+    expect(tree.find((n) => n.id === 'includeRecentCommits')?.description).toBe('off');
+    expect(tree.find((n) => n.id === 'customPrompt')?.description).toBe('set');
+    expect(tree.find((n) => n.id === 'unstagedFallback')?.description).toBe('never');
+  });
+});
+
+describe('buildAdvancedChildren', () => {
+  it('lists one child per provider with its model', () => {
+    const models = {
+      openrouter: 'google/gemini-2.5-flash-lite',
+      kimi: 'kimi-k2.6',
+      glm: 'glm-4.5-air',
+      minimax: 'MiniMax-M2.5-highspeed',
+      anthropicCustom: 'claude-haiku-4-5-20251001',
+      claudeCli: '',
+      codexCli: '',
+    };
+    const children = buildAdvancedChildren(models);
+    expect(children).toHaveLength(PROVIDERS.length);
+    expect(children.map((c) => c.id)).toContain('advancedProvider:glm');
+    expect(children.find((c) => c.id === 'advancedProvider:kimi')?.description).toBe('kimi-k2.6');
+    expect(children.find((c) => c.id === 'advancedProvider:claudeCli')?.description).toBe(
+      'provider default',
+    );
   });
 });

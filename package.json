@@ -55,17 +55,7 @@
       ],
       "scm/title": [
         {
-          "command": "generateCommit.generate",
-          "when": "scmProvider == git",
-          "group": "navigation"
-        },
-        {
           "command": "generateCommit.switchProvider",
-          "when": "scmProvider == git",
-          "group": "2_actions"
-        },
-        {
-          "command": "generateCommit.settings",
           "when": "scmProvider == git",
           "group": "2_actions"
         }
@@ -219,6 +209,23 @@
           "markdownDescription": "Reasoning effort for the Codex CLI, passed as `-c model_reasoning_effort=\"<value>\"`. Accepted values are model-dependent (verified 2026-08-02: `none`, `low`, `medium`, `high`, `xhigh`, `max` on the default model; the config reference also lists `minimal`). Empty uses the CLI default."
         }
       }
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "generateCommit",
+          "title": "Generate Commit",
+          "icon": "images/icon-light.svg"
+        }
+      ]
+    },
+    "views": {
+      "generateCommit": [
+        {
+          "id": "generateCommit.settingsView",
+          "name": "Settings"
+        }
+      ]
     }
   },
   "scripts": {
