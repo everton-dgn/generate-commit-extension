@@ -132,7 +132,7 @@ export class ModelCatalog {
     return entry && entry.signature === signature ? entry.models : [];
   }
 
-  /** Refreshes one provider when stale (or when force, or the endpoint/auth changed); failures keep the previous cache. */
+  /** Refreshes one provider when stale (or when forced, or when the endpoint/auth changed); failures keep the previous cache. */
   async refresh(id: ProviderId, force = false): Promise<boolean> {
     if (id === 'claudeCli' || id === 'codexCli') return false;
     const cfg = this.deps.getConfig(id);

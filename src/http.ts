@@ -96,7 +96,7 @@ export async function postJson(
   return requestJson(url, { method: 'POST', headers, body }, opts);
 }
 
-/** GETs JSON over HTTPS only (model catalogs and similars). */
+/** GETs JSON over HTTPS only (model catalogs and similar endpoints). */
 export async function getJson(
   url: string,
   headers: Record<string, string>,
