@@ -113,6 +113,9 @@
     return datalist;
   }
 
+  // Free-text mode is keyed by the CONFIG key on purpose: the main and
+  // advanced model controls of a provider edit the same setting, so both
+  // switch together and stay consistent.
   const customMode = {};
 
   function modelControl(provider, key, idSuffix, fkey) {
@@ -125,7 +128,7 @@
       if (hasCatalog) {
         const datalist = modelDatalist(input, provider.models, idSuffix);
         if (datalist) wrap.append(datalist);
-        const back = el('button', 'link-btn', 'list');
+        const back = el('button', 'link-btn', 'Choose from list');
         back.type = 'button';
         back.title = 'Show the model list';
         back.addEventListener('click', () => {
@@ -148,6 +151,9 @@
     select.addEventListener('change', () => {
       if (select.value === state.customModelValue) {
         customMode[key] = true;
+        // Blur before re-rendering: otherwise the focus restore would plant
+        // the sentinel value into the new free-text input.
+        select.blur();
         render();
         return;
       }
@@ -278,7 +284,9 @@
       return field(label, selectInput(fullKey, current, opts));
     }
     if (key === 'model') {
-      return field(label, modelControl(provider, fullKey, `${provider.id}-adv`));
+      // Distinct focus identity: the main model field of this provider uses
+      // the same config key, so the advanced control needs its own fkey.
+      return field(label, modelControl(provider, fullKey, `${provider.id}-adv`, `adv:${fullKey}`));
     }
     return field(label, textInput(fullKey, current));
   }
