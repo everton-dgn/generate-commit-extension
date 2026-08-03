@@ -70,6 +70,47 @@ describe('parseCodexModelCatalog', () => {
     expect(snap.defaultEfforts).toEqual(['low', 'medium', 'high', 'xhigh', 'max', 'ultra']);
   });
 
+  it('prefers the lowest numeric priority for the default efforts', () => {
+    const snap = parseCodexModelCatalog({
+      models: [
+        {
+          slug: 'listed-first',
+          visibility: 'list',
+          priority: 2,
+          supported_reasoning_levels: [{ effort: 'low' }],
+        },
+        {
+          slug: 'higher-priority',
+          visibility: 'list',
+          priority: 1,
+          supported_reasoning_levels: [{ effort: 'high' }],
+        },
+      ],
+    });
+    expect(snap.models).toEqual(['listed-first', 'higher-priority']);
+    expect(snap.defaultEfforts).toEqual(['high']);
+  });
+
+  it('ignores non-numeric priority values', () => {
+    const snap = parseCodexModelCatalog({
+      models: [
+        {
+          slug: 'a',
+          visibility: 'list',
+          priority: 'first',
+          supported_reasoning_levels: [{ effort: 'low' }],
+        },
+        {
+          slug: 'b',
+          visibility: 'list',
+          priority: 1,
+          supported_reasoning_levels: [{ effort: 'max' }],
+        },
+      ],
+    });
+    expect(snap.defaultEfforts).toEqual(['max']);
+  });
+
   it('dedupes repeated slugs keeping the first occurrence', () => {
     const snap = parseCodexModelCatalog({
       models: [
@@ -158,6 +199,72 @@ describe('CodexCliCatalog', () => {
     expect(catalog.effortsFor('gpt-5.4')).toEqual(['low', 'high']);
     expect(catalog.effortsFor('unknown-model')).toEqual(catalog.snapshot()?.defaultEfforts);
     expect(catalog.effortsFor('')).toEqual(catalog.snapshot()?.defaultEfforts);
+  });
+
+  it('falls back when a listed model declares no effort levels', async () => {
+    const deps = depsWith({
+      run: async () => ({
+        code: 0,
+        stdout: JSON.stringify({
+          models: [{ slug: 'no-levels', visibility: 'list', supported_reasoning_levels: [] }],
+        }),
+      }),
+    });
+    const catalog = new CodexCliCatalog(deps);
+    await catalog.refresh();
+    expect(catalog.snapshot()?.models).toEqual(['no-levels']);
+    expect(catalog.effortsFor('no-levels')).toEqual(CODEX_EFFORT_FALLBACK);
+    expect(catalog.effortsFor('')).toEqual(CODEX_EFFORT_FALLBACK);
+  });
+
+  it('dedupes concurrent refreshes into a single CLI execution', async () => {
+    let calls = 0;
+    let release: (() => void) | undefined;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const deps = depsWith({
+      run: async () => {
+        calls += 1;
+        await gate;
+        return { code: 0, stdout: JSON.stringify(CATALOG_FIXTURE) };
+      },
+    });
+    const catalog = new CodexCliCatalog(deps);
+    const first = catalog.refresh();
+    const second = catalog.refresh();
+    release?.();
+    expect(await first).toBe(true);
+    expect(await second).toBe(true);
+    expect(calls).toBe(1);
+  });
+
+  it('tolerates noise before the JSON payload', async () => {
+    const deps = depsWith({
+      run: async () => ({
+        code: 0,
+        stdout: `warning: old version\n${JSON.stringify(CATALOG_FIXTURE)}`,
+      }),
+    });
+    const catalog = new CodexCliCatalog(deps);
+    expect(await catalog.refresh()).toBe(true);
+    expect(catalog.snapshot()?.models.length).toBeGreaterThan(0);
+  });
+
+  it('does not start work when the signal is already aborted', async () => {
+    let calls = 0;
+    const controller = new AbortController();
+    controller.abort();
+    const deps = depsWith({
+      signal: controller.signal,
+      run: async () => {
+        calls += 1;
+        return { code: 0, stdout: JSON.stringify(CATALOG_FIXTURE) };
+      },
+    });
+    const catalog = new CodexCliCatalog(deps);
+    expect(await catalog.refresh(true)).toBe(false);
+    expect(calls).toBe(0);
   });
 
   it('skips refetch inside the TTL window unless forced', async () => {

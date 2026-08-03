@@ -119,6 +119,13 @@ export class SettingsPanelProvider implements vscode.WebviewViewProvider {
     view.onDidDispose(
       () => {
         this.view = undefined;
+        // A view pode ser reaberta depois: sem limpar aqui, cada reabertura
+        // empilharia um novo interval e ticks antigos continuariam spawnando
+        // buscas de catálogo (inclusive processos CLI) com o painel fechado.
+        if (this.refreshTimer !== undefined) {
+          clearInterval(this.refreshTimer);
+          this.refreshTimer = undefined;
+        }
       },
       undefined,
       this.context.subscriptions,
@@ -161,6 +168,7 @@ export class SettingsPanelProvider implements vscode.WebviewViewProvider {
     // Mantém os catálogos atualizados enquanto o painel estiver aberto; o
     // portão de TTL em refresh() torna isso um no-op até que uma entrada
     // realmente expire.
+    if (this.refreshTimer !== undefined) clearInterval(this.refreshTimer);
     this.refreshTimer = setInterval(() => this.refreshCatalogs(), MODELS_TTL_MS);
   }
 

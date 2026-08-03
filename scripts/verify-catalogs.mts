@@ -1,7 +1,7 @@
 /**
  * Verificação ao vivo dos catálogos de modelos (2026-08-02).
  * Roda os parsers REAIS da extensão contra as respostas REAIS dos endpoints.
- * Uso: pnpm dlx tsx scripts/verify-catalogs.ts
+ * Uso: pnpm dlx tsx scripts/verify-catalogs.mts
  */
 import { execFile } from 'node:child_process';
 import { parseCodexModelCatalog } from '../src/cliCatalog';

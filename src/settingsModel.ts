@@ -115,8 +115,13 @@ export function validateSettingValue(key: string, value: unknown): ValidationRes
     case 'string': {
       if (typeof value !== 'string') return { ok: false };
       const trimmed = value.trim();
-      // A sentinela Custom… é um controle de UI, nunca um id de modelo persistível.
-      if (key.endsWith('.model') && trimmed === CUSTOM_MODEL_VALUE) return { ok: false };
+      // A sentinela Custom… é um controle de UI, nunca um valor persistível:
+      // como id de modelo ela viraria um modelo inexistente, e como idioma ela
+      // duplicaria o value da opção Custom… no select, tornando o modo de
+      // texto livre inalcançável.
+      if ((key.endsWith('.model') || key === 'language') && trimmed === CUSTOM_MODEL_VALUE) {
+        return { ok: false };
+      }
       return { ok: true, value: trimmed };
     }
   }

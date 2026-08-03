@@ -99,6 +99,12 @@ describe('validateSettingValue', () => {
     expect(validateSettingValue('customPrompt', CUSTOM_MODEL_VALUE).ok).toBe(true);
   });
 
+  it('rejects the Custom sentinel as a language (it would deadlock the select)', async () => {
+    const { validateSettingValue, CUSTOM_MODEL_VALUE } = await import('../src/settingsModel');
+    expect(validateSettingValue('language', CUSTOM_MODEL_VALUE).ok).toBe(false);
+    expect(validateSettingValue('language', 'pt-BR')).toEqual({ ok: true, value: 'pt-BR' });
+  });
+
   it('covers every key the panel is allowed to write', () => {
     const expected = [
       'provider',

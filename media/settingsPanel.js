@@ -30,7 +30,15 @@
 
   function field(labelText, control, hintText) {
     const wrap = el('div', 'field');
-    wrap.append(el('label', '', labelText));
+    const label = el('label', '', labelText);
+    // O label não pode usar htmlFor (o controle não tem id estável), então o
+    // clique nele foca o primeiro controle do campo, inclusive dentro do
+    // .select-wrap.
+    label.addEventListener('click', () => {
+      const target = wrap.querySelector('.control, input, select');
+      if (target) target.focus();
+    });
+    wrap.append(label);
     wrap.append(control);
     if (hintText) wrap.append(el('p', 'hint', hintText));
     return wrap;
@@ -137,10 +145,13 @@
     return datalist;
   }
 
-  // O modo de texto livre é indexado pela chave de CONFIG intencionalmente: os
-  // controles de modelo principal e avançado de um provider editam a mesma
-  // configuração, então os dois alternam juntos e ficam consistentes.
+  // O modo de texto livre é indexado pela chave de CONFIG: cada configuração
+  // alterna entre select e input de forma independente e consistente.
   const customMode = {};
+
+  // fkey do campo de texto livre que deve receber foco após a re-renderização
+  // que troca o select pelo input (escolha de "Custom…").
+  let pendingFocus = null;
 
   function modelControl(provider, key, idSuffix, fkey) {
     const hasCatalog = provider.models.length > 0;
@@ -176,7 +187,9 @@
       if (select.value === state.customModelValue) {
         customMode[key] = true;
         // Tira o foco antes de re-renderizar: caso contrário, a restauração de
-        // foco inseriria o valor sentinela no novo input de texto livre.
+        // foco inseriria o valor sentinela no novo input de texto livre. O
+        // pendingFocus devolve o foco ao input depois do render.
+        pendingFocus = select.dataset.fkey || null;
         select.blur();
         render();
         return;
@@ -197,8 +210,17 @@
       section.append(field('Model', control, active.availabilityNote));
       if (active.kind === 'cli') {
         const effortOptions = active.effortOptions.map((o) => [o.value, o.label]);
+        // O valor salvo fora da lista do modelo selecionado aparece como
+        // "(current)"; o hint deixa claro que ele pode ser incompatível.
+        const currentOpt = active.effortOptions.find((o) => o.value === active.effortSelected);
+        const unsupported =
+          active.effortSelected !== '' && currentOpt && currentOpt.label.endsWith('(current)');
         section.append(
-          field('Effort', selectInput(`${active.id}.effort`, active.effortSelected, effortOptions)),
+          field(
+            'Effort',
+            selectInput(`${active.id}.effort`, active.effortSelected, effortOptions),
+            unsupported ? 'not supported by the selected model' : undefined,
+          ),
         );
       } else {
         section.append(
@@ -262,7 +284,9 @@
       if (select.value === state.customModelValue) {
         customMode[key] = true;
         // Tira o foco antes de re-renderizar: caso contrário, a restauração de
-        // foco inseriria o valor sentinela no novo input de texto livre.
+        // foco inseriria o valor sentinela no novo input de texto livre. O
+        // pendingFocus devolve o foco ao input depois do render.
+        pendingFocus = select.dataset.fkey || null;
         select.blur();
         render();
         return;
@@ -374,17 +398,26 @@
     );
     if (focusedKey) {
       const again =
-        app.querySelector(`[data-fkey="${focusedKey}"]`) ??
-        app.querySelector(`[data-key="${focusedKey}"]`);
+        app.querySelector(`[data-fkey="${CSS.escape(focusedKey)}"]`) ??
+        app.querySelector(`[data-key="${CSS.escape(focusedKey)}"]`);
       if (again) {
         again.focus();
-        if (focusedValue !== null && 'value' in again) {
+        // Em <select> só se restaura o foco, nunca o valor: o select recriado
+        // já vem com a seleção correta do estado, e reatribuir um valor
+        // capturado antes da re-renderização poderia exibir uma opção que o
+        // estado novo não tem mais (ex.: esforço do modelo anterior).
+        if (again.tagName !== 'SELECT' && focusedValue !== null && 'value' in again) {
           again.value = focusedValue;
           if (focusedSel && again.setSelectionRange) {
             again.setSelectionRange(focusedSel[0], focusedSel[1]);
           }
         }
       }
+    }
+    if (pendingFocus) {
+      const target = app.querySelector(`[data-fkey="${CSS.escape(pendingFocus)}"]`);
+      pendingFocus = null;
+      if (target) target.focus();
     }
   }
 
