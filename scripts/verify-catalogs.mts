@@ -116,5 +116,5 @@ try {
   failures += 1;
 }
 
-console.log(failures === 0 ? '\nTodos os catálogos OK' : `\n${failures} falha(s)`);
+console.log(failures === 0 ? '\nAll catalogs OK' : `\n${failures} failure(s)`);
 process.exit(failures === 0 ? 0 : 1);
