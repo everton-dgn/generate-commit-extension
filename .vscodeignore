@@ -8,6 +8,7 @@ node_modules/**
 **/*.ts
 **/*.mts
 .gitignore
+.env*
 .github/**
 CONTRIBUTING.md
 CODE_OF_CONDUCT.md
