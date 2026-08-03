@@ -4,8 +4,26 @@
   "description": "Generate Conventional Commits messages from your staged diff using AI providers (OpenRouter, Kimi, GLM, MiniMax, Claude Code CLI, Codex CLI).",
   "version": "0.1.0",
   "publisher": "everton",
-  "icon": "images/icon.png",
+  "author": "Éverton Toffanetto",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/everton-dgn/generate-commit-extension.git"
+  },
+  "bugs": {
+    "url": "https://github.com/everton-dgn/generate-commit-extension/issues"
+  },
+  "homepage": "https://github.com/everton-dgn/generate-commit-extension#readme",
+  "keywords": [
+    "ai",
+    "commit",
+    "conventional-commits",
+    "git",
+    "llm",
+    "vscode-extension"
+  ],
+  "packageManager": "pnpm@11.18.0",
+  "icon": "images/icon.png",
   "engines": {
     "vscode": "^1.85.0"
   },
