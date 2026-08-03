@@ -46,7 +46,7 @@ function nameFromHeader(line: string): string {
   return idx >= 0 ? line.slice(idx + 3) : line;
 }
 
-/** Divide um diff unificado em chunks por arquivo, indexados pelo caminho pós-imagem. */
+/** Splits a unified diff into per-file chunks, indexed by post-image path. */
 export function splitDiffByFile(diff: string): FileDiff[] {
   const files: FileDiff[] = [];
   let current: string[] = [];
@@ -83,7 +83,7 @@ export interface FilterOptions {
   readonly maxFileBytes: number;
 }
 
-/** Descarta lockfiles, arquivos minificados, binários e chunks grandes demais. */
+/** Drops lockfiles, minified files, binaries and oversized chunks. */
 export function filterFileDiffs(files: readonly FileDiff[], options: FilterOptions): FilterResult {
   const kept: FileDiff[] = [];
   const dropped: DroppedFile[] = [];
@@ -107,7 +107,7 @@ export interface TruncateResult {
   readonly totalFiles: number;
 }
 
-/** Junta chunks de arquivos até maxChars, cortando nas fronteiras de arquivo. */
+/** Joins file chunks up to maxChars, cutting at file boundaries. */
 export function truncateToLimit(files: readonly FileDiff[], maxChars: number): TruncateResult {
   const totalFiles = files.length;
   const full = files.map((f) => f.chunk).join('\n');
@@ -121,7 +121,7 @@ export function truncateToLimit(files: readonly FileDiff[], maxChars: number): T
     const next = used === 0 ? file.chunk.length : used + 1 + file.chunk.length;
     if (next > maxChars && parts.length > 0) break;
     if (next > maxChars) {
-      // Até o primeiro chunk excede o limite: fatia na marra (inclusão parcial).
+      // Even the first chunk exceeds the limit: hard-slice it (partial inclusion).
       parts.push(file.chunk.slice(0, maxChars));
       included = 1;
       used = maxChars;

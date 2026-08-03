@@ -19,7 +19,7 @@ export interface Finding {
   readonly type: SecretType;
 }
 
-/** Rótulos legíveis para humanos; nunca incluem nenhum valor de segredo encontrado. */
+/** Human-readable labels; they never include any found secret value. */
 export const SECRET_TYPE_LABELS: Readonly<Record<SecretType, string>> = {
   'openrouter-key': 'OpenRouter API key (sk-or-...)',
   'anthropic-key': 'Anthropic API key (sk-ant-...)',
@@ -69,8 +69,8 @@ function fileNameFindings(fileName: string): Finding[] {
 }
 
 /**
- * Varre o diff em busca de padrões que parecem segredos. Os achados nunca
- * carregam o valor encontrado, apenas o arquivo e a categoria do segredo.
+ * Scans the diff for patterns that look like secrets. Findings never carry
+ * the matched value, only the file and the secret category.
  */
 export function scanDiff(files: readonly FileDiff[]): Finding[] {
   const seen = new Set<string>();
@@ -95,7 +95,7 @@ export function scanDiff(files: readonly FileDiff[]): Finding[] {
   return findings;
 }
 
-/** Substitui qualquer coisa que corresponda aos padrões de segredos conhecidos por "[redacted]". */
+/** Replaces anything matching the known secret patterns with "[redacted]". */
 export function redactSecrets(text: string): string {
   let out = text;
   for (const pattern of CONTENT_PATTERNS) {

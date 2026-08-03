@@ -61,7 +61,7 @@ textarea.control {
 
 .select-wrap select.control {
   cursor: pointer;
-  /* Esconde a seta nativa: a seta SVG do wrapper toma o lugar. */
+  /* Hides the native arrow: the wrapper's SVG arrow takes its place. */
   appearance: none;
   -webkit-appearance: none;
   padding-right: 26px;
@@ -90,10 +90,10 @@ textarea.control {
   font-size: 0.95em;
 }
 
-/* Switch em CSS puro sobre o checkbox nativo: o input vira o trilho e o
-   ::before vira o polegar. O elemento continua checkbox (acessibilidade,
-   foco e a lógica de checked intactos); zero JS e zero imagens, então a CSP
-   segue intacta. */
+/* Pure CSS switch over the native checkbox: the input becomes the track and
+   ::before becomes the thumb. The element stays a checkbox (accessibility,
+   focus and checked logic intact); zero JS and zero images, so the CSP
+   stays intact. */
 .checkbox-row input[type="checkbox"] {
   appearance: none;
   -webkit-appearance: none;
@@ -104,8 +104,8 @@ textarea.control {
   height: 18px;
   margin: 0;
   border-radius: 999px;
-  /* Em temas claros input-background costuma ser igual ao fundo do painel e
-     input-border indefinido: sem o fallback o trilho desligado some. */
+  /* In light themes input-background often matches the panel background and
+     input-border is undefined: without the fallback the off track vanishes. */
   border: 1px solid var(--vscode-input-border, var(--vscode-descriptionForeground));
   background: var(--vscode-input-background);
   cursor: pointer;
@@ -126,9 +126,9 @@ textarea.control {
   transition: left 0.15s ease;
 }
 
-/* Verde do "passed" do tema escurecido e levemente azulado via color-mix
-   (encapsulado em @supports: engines sem color-mix ficam com o verde puro).
-   O fallback do charts.blue espelha o default do core (#3794ff). */
+/* Theme "passed" green darkened and slightly blued via color-mix
+   (wrapped in @supports: engines without color-mix keep the plain green).
+   The charts.blue fallback mirrors the core default (#3794ff). */
 .checkbox-row input[type="checkbox"]:checked {
   background: var(--vscode-testing-iconPassed, #73c991);
   border-color: var(--vscode-testing-iconPassed, #73c991);
@@ -149,9 +149,9 @@ textarea.control {
   }
 }
 
-/* Inputs usam border-box: o trilho de 32px tem padding box de 30px (borda
-   1px de cada lado). Polegar de 12px em left: 16px => recuos de 3px dos dois
-   lados (medido no Chromium em 2026-08-02). */
+/* Inputs use border-box: the 32px track has a 30px padding box (1px border
+   on each side). A 12px thumb at left: 16px => 3px inset on both sides
+   (measured in Chromium on 2026-08-02). */
 .checkbox-row input[type="checkbox"]:checked::before {
   left: 16px;
   background: var(--vscode-button-foreground);
@@ -162,9 +162,9 @@ textarea.control {
   outline-offset: 1px;
 }
 
-/* No Chromium, checkbox casa :focus-visible até em clique de mouse. O anel de
-   foco só deve aparecer na navegação por teclado: o JS marca a última
-   modalidade em <body data-modality>. */
+/* In Chromium, checkboxes match :focus-visible even on mouse clicks. The
+   focus ring should only appear on keyboard navigation: the JS records the
+   last modality in <body data-modality>. */
 body[data-modality="pointer"] .checkbox-row input[type="checkbox"]:focus-visible {
   outline: none;
 }
@@ -174,8 +174,8 @@ body[data-modality="pointer"] .checkbox-row input[type="checkbox"]:focus-visible
   cursor: default;
 }
 
-/* O :checked acima tem especificidade maior que .invalid-flash sozinho:
-   sem repetir o seletor, o flash de erro nunca aparece em switch ligado. */
+/* The :checked above has higher specificity than .invalid-flash alone:
+   without repeating the selector, the error flash never shows on a checked switch. */
 .checkbox-row input[type="checkbox"].invalid-flash,
 .checkbox-row input[type="checkbox"].invalid-flash:checked {
   border-color: var(--vscode-inputValidation-errorBorder, #f14c4c);

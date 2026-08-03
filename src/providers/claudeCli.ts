@@ -9,17 +9,17 @@ export interface ClaudeCliConfig {
 }
 
 /**
- * Flags verificadas contra `claude --help` (Claude Code 2.1.220) em 2026-08-02:
+ * Flags verified against `claude --help` (Claude Code 2.1.220) on 2026-08-02:
  * -p, --tools "", --model, --effort, --output-format, --no-session-persistence.
- * Não existe flag --fast nesta versão (o modo fast é exclusivo do modo interativo).
- * Thinking desligado via MAX_THINKING_TOKENS=0 (env documentada do Claude Code;
- * smoke test em 2026-08-02).
+ * There is no --fast flag in this version (fast mode is exclusive to interactive mode).
+ * Thinking disabled via MAX_THINKING_TOKENS=0 (documented Claude Code env var;
+ * smoke test on 2026-08-02).
  */
 export function buildClaudeArgs(cfg: ClaudeCliConfig): string[] {
   const args = ['-p', '--tools', '', '--output-format', 'text', '--no-session-persistence'];
   const model = cfg.model.trim();
   if (model) args.push('--model', model);
-  // Com thinking desligado, --effort é irrelevante (não há blocos de raciocínio).
+  // With thinking disabled, --effort is irrelevant (there are no reasoning blocks).
   const effort = cfg.disableThinking ? '' : cfg.effort.trim();
   if (effort) args.push('--effort', effort);
   return args;
@@ -31,9 +31,9 @@ export interface ClaudeCliDeps {
   readonly log?: (line: string) => void;
 }
 
-// Cache com escopo de sessão: createProviders recria as instâncias a cada
-// comando, então o caminho resolvido do binário precisa viver no escopo do
-// módulo para evitar nova detecção.
+// Session-scoped cache: createProviders recreates the instances on every
+// command, so the resolved binary path must live in module scope to avoid
+// re-detection.
 let cachedClaudePath: string | null | undefined;
 
 export function createClaudeCliProvider(deps: ClaudeCliDeps): Provider {

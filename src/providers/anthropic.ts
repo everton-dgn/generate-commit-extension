@@ -22,10 +22,10 @@ export interface BuiltAnthropicRequest {
 }
 
 /**
- * Monta uma requisição da Anthropic Messages API. Verificado contra a
- * documentação oficial (platform.claude.com/docs/en/api/messages) em
- * 2026-08-02; o mesmo formato é usado pelos endpoints compatíveis com
- * Anthropic de Kimi, GLM e MiniMax.
+ * Builds an Anthropic Messages API request. Verified against the official
+ * documentation (platform.claude.com/docs/en/api/messages) on 2026-08-02;
+ * the same format is used by the Anthropic-compatible endpoints of Kimi,
+ * GLM and MiniMax.
  */
 export function buildAnthropicRequest(
   cfg: AnthropicCompatibleConfig,
@@ -72,7 +72,7 @@ export interface AnthropicProviderDeps {
   readonly getConfig: () => AnthropicCompatibleConfig;
 }
 
-/** Cliente genérico da Anthropic Messages API; os presets (Kimi/GLM/MiniMax) diferem apenas na configuração. */
+/** Generic Anthropic Messages API client; the presets (Kimi/GLM/MiniMax) differ only in config. */
 export function createAnthropicCompatibleProvider(
   id: ProviderId,
   label: string,

@@ -3,20 +3,20 @@ import { runCli } from './cliRun';
 import { MODELS_TTL_MS, shouldRefetch } from './modelCatalog';
 
 /**
- * Catálogo de modelos do Codex CLI: lê `codex debug models` (subcomando
- * verificado na codex-cli 0.146.0 em 2026-08-02), que despeja o catálogo vivo
- * em JSON — incluindo, por modelo, os níveis de reasoning suportados. Mantém
- * cache por uma hora e degrada para listas estáticas quando a leitura falha.
+ * Codex CLI model catalog: reads `codex debug models` (subcommand verified
+ * on codex-cli 0.146.0 on 2026-08-02), which dumps the live catalog as JSON,
+ * including the supported reasoning levels of each model. Caches for one
+ * hour and degrades to static lists when the read fails.
  */
 
 export interface CodexCatalogSnapshot {
   readonly models: readonly string[];
   readonly effortsByModel: Readonly<Record<string, readonly string[]>>;
-  /** Níveis do modelo prioritário do catálogo (o default do CLI). */
+  /** Levels of the catalog's top-priority model (the CLI default). */
   readonly defaultEfforts: readonly string[];
 }
 
-/** Ordem canônica dos níveis de esforço, do mais barato ao mais caro. */
+/** Canonical order of effort levels, from cheapest to most expensive. */
 const EFFORT_ORDER: readonly string[] = [
   'none',
   'minimal',
@@ -28,7 +28,7 @@ const EFFORT_ORDER: readonly string[] = [
   'ultra',
 ];
 
-/** Ordena níveis pela sequência canônica; níveis desconhecidos vão ao final, em ordem alfabética. */
+/** Sorts levels by the canonical sequence; unknown levels go last, alphabetically. */
 export function orderEffortLevels(levels: readonly string[]): string[] {
   const known = EFFORT_ORDER.filter((level) => levels.includes(level));
   const unknown = levels.filter((level) => !EFFORT_ORDER.includes(level)).sort();
@@ -36,8 +36,8 @@ export function orderEffortLevels(levels: readonly string[]): string[] {
 }
 
 /**
- * Fallback estático: união dos níveis vistos no catálogo vivo em 2026-08-02.
- * Usado quando o CLI não está instalado ou a leitura falha.
+ * Static fallback: union of the levels seen in the live catalog on
+ * 2026-08-02. Used when the CLI is not installed or the read fails.
  */
 export const CODEX_EFFORT_FALLBACK: readonly string[] = [
   'low',
@@ -49,11 +49,11 @@ export const CODEX_EFFORT_FALLBACK: readonly string[] = [
 ];
 
 /**
- * Extrai os slugs e níveis de esforço do JSON de `codex debug models`.
- * Apenas entradas com visibility "list" (as visíveis no seletor do CLI)
- * entram; duplicatas são removidas mantendo a ordem de prioridade do CLI.
- * O default do CLI é o modelo de menor `priority` numérica (campo presente
- * no catálogo da codex-cli 0.146.0); sem o campo, vale o primeiro listado.
+ * Extracts slugs and effort levels from the `codex debug models` JSON. Only
+ * entries with visibility "list" (those visible in the CLI picker) are kept;
+ * duplicates are removed preserving the CLI priority order. The CLI default
+ * is the model with the lowest numeric `priority` (a field present in the
+ * codex-cli 0.146.0 catalog); without the field, the first listed wins.
  */
 export function parseCodexModelCatalog(json: unknown): CodexCatalogSnapshot {
   const models: string[] = [];
@@ -117,16 +117,16 @@ export class CodexCliCatalog {
 
   constructor(private readonly deps: CodexCliCatalogDeps) {}
 
-  /** Leitura síncrona do cache; undefined quando ainda não houve busca bem-sucedida. */
+  /** Synchronous cache read; undefined until a fetch has succeeded. */
   snapshot(): CodexCatalogSnapshot | undefined {
     return this.cache?.snapshot;
   }
 
   /**
-   * Níveis de esforço para o modelo selecionado; com o modelo vazio (default
-   * do CLI) usa os níveis do modelo prioritário do catálogo. Um modelo
-   * presente mas sem níveis declarados, ou a ausência de catálogo, cai no
-   * fallback estático.
+   * Effort levels for the selected model; with an empty model (the CLI
+   * default) uses the levels of the catalog's top-priority model. A model
+   * present but with no declared levels, or a missing catalog, falls back to
+   * the static list.
    */
   effortsFor(model: string): readonly string[] {
     const snap = this.cache?.snapshot;
@@ -138,12 +138,12 @@ export class CodexCliCatalog {
     return snap.defaultEfforts.length > 0 ? snap.defaultEfforts : CODEX_EFFORT_FALLBACK;
   }
 
-  /** Recarrega o catálogo via `codex debug models`; falhas mantêm o cache anterior. */
+  /** Reloads the catalog via `codex debug models`; failures keep the previous cache. */
   private inFlight: Promise<boolean> | undefined;
 
   refresh(force = false): Promise<boolean> {
-    // Chamadas concorrentes (timer de TTL + config change + saveKey) dividem a
-    // mesma execução em vez de spawnar CLIs sobrepostos.
+    // Concurrent calls (TTL timer + config change + saveKey) share the same
+    // run instead of spawning overlapping CLIs.
     if (!force && this.inFlight) return this.inFlight;
     this.inFlight = this.doRefresh(force).finally(() => {
       this.inFlight = undefined;
@@ -168,7 +168,7 @@ export class CodexCliCatalog {
         signal: this.deps.signal,
       });
       if (result.code !== 0) return false;
-      // Tolera texto acidental antes do JSON (banner, aviso de versão).
+      // Tolerates stray text before the JSON (banner, version notice).
       const start = result.stdout.indexOf('{');
       if (start < 0) return false;
       const snapshot = parseCodexModelCatalog(JSON.parse(result.stdout.slice(start)));
@@ -176,7 +176,7 @@ export class CodexCliCatalog {
       this.cache = { at: this.deps.now(), snapshot };
       return true;
     } catch {
-      // CLI quebrado, JSON inválido ou abortado: mantém as sugestões anteriores.
+      // Broken CLI, invalid JSON or aborted: keep the previous suggestions.
       return false;
     }
   }

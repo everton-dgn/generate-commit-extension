@@ -86,7 +86,7 @@ export interface KeyStatus {
   readonly hasKey: boolean;
 }
 
-/** Quais providers baseados em chave têm uma chave armazenada (nunca expõe valores). */
+/** Which key-based providers have a stored key (never exposes values). */
 export async function collectKeyStatus(context: vscode.ExtensionContext): Promise<KeyStatus[]> {
   const result: KeyStatus[] = [];
   for (const meta of PROVIDERS) {
@@ -103,10 +103,10 @@ export interface KeyValidation {
 }
 
 /**
- * Valida uma chave de API candidata com uma requisição mínima. Apenas falhas
- * de autenticação rejeitam a chave: qualquer resposta do endpoint (cobrança,
- * rate limit, erro de servidor, até um payload rejeitado) prova que a chave
- * foi aceita, enquanto erros de conectividade não provam nada.
+ * Validates a candidate API key with a minimal request. Only authentication
+ * failures reject the key: any endpoint response (billing, rate limit,
+ * server error, even a rejected payload) proves the key was accepted, while
+ * connectivity errors prove nothing.
  */
 export async function validateApiKey(id: ProviderId, apiKey: string): Promise<KeyValidation> {
   try {

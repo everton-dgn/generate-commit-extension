@@ -37,7 +37,7 @@ describe('isValidBaseUrl', () => {
     expect(isValidBaseUrl('api.example.com')).toBe(false);
     expect(isValidBaseUrl('https://')).toBe(false);
     expect(isValidBaseUrl('https://?x=1')).toBe(false);
-    expect(isValidBaseUrl('https:// espaço')).toBe(false);
+    expect(isValidBaseUrl('https:// with space')).toBe(false);
   });
 });
 
@@ -120,7 +120,7 @@ describe('validateSettingValue', () => {
       'timeoutSeconds',
     ];
     for (const key of expected) expect(PANEL_SETTINGS[key]).toBeDefined();
-    // Campos por provider que o painel expõe na seção Provider.
+    // Per-provider fields the panel exposes in the Provider section.
     const perProvider: Record<string, readonly string[]> = {
       openrouter: ['model', 'baseUrl'],
       kimi: ['model', 'baseUrl'],

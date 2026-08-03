@@ -4,9 +4,9 @@
   const app = document.getElementById('app');
   let state = null;
 
-  // Modalidade da última interação: o anel de foco dos switches só aparece
-  // na navegação por teclado (no Chromium, checkbox casa :focus-visible até
-  // em clique de mouse).
+  // Last interaction modality: the switch focus ring only appears on
+  // keyboard navigation (in Chromium, checkboxes match :focus-visible even
+  // on mouse clicks).
   document.addEventListener(
     'pointerdown',
     () => document.body.setAttribute('data-modality', 'pointer'),
@@ -45,8 +45,8 @@
   function field(labelText, control, hintText) {
     const wrap = el('div', 'field');
     const label = el('label', '', labelText);
-    // O label não pode usar htmlFor (o controle não tem id estável), então o
-    // clique nele foca o primeiro controle do campo, inclusive dentro do
+    // The label cannot use htmlFor (the control has no stable id), so
+    // clicking it focuses the field's first control, even inside the
     // .select-wrap.
     label.addEventListener('click', () => {
       const target = wrap.querySelector('.control, input, select');
@@ -88,8 +88,8 @@
     return input;
   }
 
-  // Textarea multilinha com o mesmo debounce do textInput; redimensionável
-  // verticalmente via CSS.
+  // Multiline textarea with the same debounce as textInput; vertically
+  // resizable via CSS.
   function textareaInput(key, value, placeholder, rows) {
     const input = el('textarea', 'control');
     input.value = value || '';
@@ -112,8 +112,8 @@
     return input;
   }
 
-  // Seta customizada em SVG inline criada via DOM: a CSP bloqueia imagens
-  // (img-src 'none'), então background-image/data URI não funcionariam.
+  // Custom inline SVG arrow created via DOM: the CSP blocks images
+  // (img-src 'none'), so background-image/data URI would not work.
   function selectArrow() {
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     svg.setAttribute('class', 'select-arrow');
@@ -183,12 +183,12 @@
     return datalist;
   }
 
-  // O modo de texto livre é indexado pela chave de CONFIG: cada configuração
-  // alterna entre select e input de forma independente e consistente.
+  // Free-text mode is keyed by the CONFIG key: each setting toggles between
+  // select and input independently and consistently.
   const customMode = {};
 
-  // fkey do campo de texto livre que deve receber foco após a re-renderização
-  // que troca o select pelo input (escolha de "Custom…").
+  // fkey of the free-text field that must receive focus after the re-render
+  // that swaps the select for the input (choosing "Custom…").
   let pendingFocus = null;
 
   function modelControl(provider, key, idSuffix, fkey) {
@@ -224,9 +224,9 @@
     select.addEventListener('change', () => {
       if (select.value === state.customModelValue) {
         customMode[key] = true;
-        // Tira o foco antes de re-renderizar: caso contrário, a restauração de
-        // foco inseriria o valor sentinela no novo input de texto livre. O
-        // pendingFocus devolve o foco ao input depois do render.
+        // Blur before re-rendering: otherwise focus restoration would insert
+        // the sentinel value into the new free-text input. pendingFocus gives
+        // focus back to the input after the render.
         pendingFocus = select.dataset.fkey || null;
         select.blur();
         render();
@@ -248,8 +248,8 @@
       section.append(field('Model', control, active.availabilityNote));
       if (active.kind === 'cli') {
         const effortOptions = active.effortOptions.map((o) => [o.value, o.label]);
-        // O valor salvo fora da lista do modelo selecionado aparece como
-        // "(current)"; o hint deixa claro que ele pode ser incompatível.
+        // A saved value outside the selected model's list shows up as
+        // "(current)"; the hint makes clear it may be incompatible.
         const currentOpt = active.effortOptions.find((o) => o.value === active.effortSelected);
         const unsupported =
           active.effortSelected !== '' && currentOpt && currentOpt.label.endsWith('(current)');
@@ -287,8 +287,8 @@
     return section;
   }
 
-  // O modo de texto livre do idioma compartilha o mapa customMode do modelo:
-  // ambos são indexados pela chave de configuração.
+  // The language free-text mode shares the model's customMode map: both are
+  // keyed by the config key.
   function languageControl() {
     const key = 'language';
     if (customMode[key]) {
@@ -328,9 +328,9 @@
     select.addEventListener('change', () => {
       if (select.value === state.customModelValue) {
         customMode[key] = true;
-        // Tira o foco antes de re-renderizar: caso contrário, a restauração de
-        // foco inseriria o valor sentinela no novo input de texto livre. O
-        // pendingFocus devolve o foco ao input depois do render.
+        // Blur before re-rendering: otherwise focus restoration would insert
+        // the sentinel value into the new free-text input. pendingFocus gives
+        // focus back to the input after the render.
         pendingFocus = select.dataset.fkey || null;
         select.blur();
         render();
@@ -454,10 +454,10 @@
         app.querySelector(`[data-key="${CSS.escape(focusedKey)}"]`);
       if (again) {
         again.focus();
-        // Em <select> só se restaura o foco, nunca o valor: o select recriado
-        // já vem com a seleção correta do estado, e reatribuir um valor
-        // capturado antes da re-renderização poderia exibir uma opção que o
-        // estado novo não tem mais (ex.: esforço do modelo anterior).
+        // On <select> only focus is restored, never the value: the recreated
+        // select already carries the correct selection from state, and
+        // reassigning a value captured before the re-render could display an
+        // option the new state no longer has (e.g. the previous model's effort).
         if (again.tagName !== 'SELECT' && focusedValue !== null && 'value' in again) {
           again.value = focusedValue;
           if (focusedSel && again.setSelectionRange) {
@@ -537,7 +537,7 @@
     if (ok || !app) return;
     const input = app.querySelector(`[data-key="${key}"]`);
     if (input && 'value' in input) {
-      // Em checkbox o estado visual é o checked, não o value.
+      // On checkboxes the visual state is checked, not value.
       if (input.type === 'checkbox') {
         input.checked = stateValueFor(key) === true;
       } else {

@@ -6,11 +6,11 @@ export interface ProviderMeta {
   readonly kind: 'http' | 'cli';
   readonly needsApiKey: boolean;
   readonly defaultModel: string;
-  /** Onde o usuário cria uma chave de API (verificado em 2026-08-02). */
+  /** Where the user creates an API key (verified on 2026-08-02). */
   readonly keyConsoleUrl?: string;
 }
 
-/** Ordem de exibição/fallback: CLIs sem configuração primeiro, depois os providers HTTP. */
+/** Display/fallback order: zero-config CLIs first, then the HTTP providers. */
 export const PROVIDERS: readonly ProviderMeta[] = [
   { id: 'claudeCli', label: 'Claude Code CLI', kind: 'cli', needsApiKey: false, defaultModel: '' },
   { id: 'codexCli', label: 'Codex CLI', kind: 'cli', needsApiKey: false, defaultModel: '' },
@@ -65,8 +65,8 @@ export function isProviderId(value: string): value is ProviderId {
 }
 
 /**
- * Escolhe o provider a usar: o configurado quando disponível, caso contrário
- * o primeiro provider disponível na ordem de exibição; null quando nenhum está disponível.
+ * Picks the provider to use: the configured one when available, otherwise
+ * the first available provider in display order; null when none is available.
  */
 export function resolveProviderChoice(
   configured: string,

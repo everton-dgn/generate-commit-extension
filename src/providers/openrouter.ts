@@ -1,7 +1,7 @@
 import { postJson } from '../http';
 import { type GenerateRequest, type Provider, ProviderError } from '../types';
 
-/** Extrai o texto do assistente de um chat completion compatível com OpenAI. */
+/** Extracts the assistant text from an OpenAI-compatible chat completion. */
 export function parseOpenAiChatResponse(json: unknown): string {
   if (typeof json !== 'object' || json === null) {
     throw new ProviderError('invalidResponse', 'Provider returned a non-JSON response');
