@@ -17,7 +17,7 @@ export interface RunCliOptions {
   readonly timeoutMs: number;
   readonly signal: AbortSignal;
   readonly envRemove?: readonly string[];
-  /** Variáveis extras mescladas ao ambiente do filho (ex.: MAX_THINKING_TOKENS=0). */
+  /** Extra variables merged into the child environment (e.g. MAX_THINKING_TOKENS=0). */
   readonly env?: Readonly<Record<string, string>>;
 }
 
@@ -25,16 +25,15 @@ const MAX_STDOUT_CHARS = 2_000_000;
 const MAX_STDERR_CHARS = 200_000;
 
 /**
- * Executa uma CLI com o prompt no stdin. Cancelamento e timeout encerram o
- * grupo de processos inteiro (SIGTERM, depois SIGKILL após um período de
- * tolerância), para que subprocessos criados pela CLI não sobrevivam à
- * requisição.
+ * Runs a CLI with the prompt on stdin. Cancellation and timeout kill the
+ * whole process group (SIGTERM, then SIGKILL after a grace period) so
+ * subprocesses spawned by the CLI do not outlive the request.
  */
 export async function runCli(opts: RunCliOptions): Promise<CliResult> {
   return new Promise((resolve, reject) => {
     const env = { ...process.env };
     Object.assign(env, opts.env);
-    // A remoção vem por último: uma chave presente nas duas listas é removida.
+    // Removal comes last: a key present in both lists is removed.
     for (const key of opts.envRemove ?? []) delete env[key];
     const detached = process.platform !== 'win32';
     const child = spawn(opts.bin, [...opts.args], {
@@ -57,7 +56,7 @@ export async function runCli(opts: RunCliOptions): Promise<CliResult> {
         try {
           child.kill(signal);
         } catch {
-          // já terminou
+          // already exited
         }
       }
     };
@@ -101,10 +100,10 @@ export async function runCli(opts: RunCliOptions): Promise<CliResult> {
       finish(() => resolve({ code, stdout, stderr, timedOut, cancelled }));
     });
     child.stdin.on('error', () => {
-      // EPIPE: o filho saiu antes de consumir o prompt; tratado pelo close.
+      // EPIPE: the child exited before consuming the prompt; handled by close.
     });
-    // end() enfileira o payload inteiro e deixa o stream drená-lo, então
-    // prompts grandes são entregues sem tratamento manual de backpressure.
+    // end() queues the whole payload and lets the stream drain it, so large
+    // prompts are delivered without manual backpressure handling.
     child.stdin.end(opts.stdin, 'utf8');
   });
 }
@@ -132,9 +131,9 @@ const KNOWN_CLI_ERRORS: readonly { pattern: RegExp; label: string }[] = [
 ];
 
 /**
- * Mapeia o stderr bruto da CLI para um rótulo curto e seguro de uma lista
- * fechada. O stderr bruto nunca chega aos logs nem à UI: pode ecoar o prompt
- * (o diff) ou segredos.
+ * Maps raw CLI stderr to a short, safe label from a closed list. Raw stderr
+ * never reaches the logs or the UI: it can echo the prompt (the diff) or
+ * secrets.
  */
 export function classifyCliError(stderr: string): string | undefined {
   for (const { pattern, label } of KNOWN_CLI_ERRORS) {

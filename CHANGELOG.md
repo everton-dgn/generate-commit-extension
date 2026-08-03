@@ -1,71 +1,71 @@
 # Changelog
 
-Todas as mudanças notáveis deste projeto são documentadas aqui, seguindo o
-espírito do [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e
-versionamento semântico.
+All notable changes to this project are documented here, following the
+spirit of [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
+semantic versioning.
 
 ## [Unreleased]
 
-### Adicionado
+### Added
 
-- `generateCommit.disableThinking`: desliga o raciocínio nos providers CLI
-  para menor latência (Codex com `model_reasoning_effort="none"`, Claude
-  CLI com `MAX_THINKING_TOKENS=0`). O dropdown de Effort fica desabilitado
-  no painel enquanto o toggle está ligado.
-- Campo "Custom prompt instructions" agora é uma textarea multilinha
-  redimensionável verticalmente.
-- Sugestões de modelo ao vivo no campo Model do painel: a lista completa é
-  buscada no endpoint de modelos de cada provider (cache de 1 hora) e
-  modelos novos aparecem automaticamente no dropdown, com a opção "Custom…"
-  para digitar um ID fora da lista.
-- Codex CLI: catálogo vivo de modelos via `codex debug models` e dropdown
-  de Effort com os níveis de reasoning do modelo selecionado (cache de 1
-  hora; fallback estático quando o CLI não responde).
-- Claude CLI: dropdown de Model com os aliases `fable`, `opus`, `sonnet` e
-  `haiku`, e dropdown de Effort com os 5 níveis do `--effort`.
+- `generateCommit.disableThinking`: disables reasoning on CLI providers for
+  lower latency (Codex with `model_reasoning_effort="none"`, Claude CLI
+  with `MAX_THINKING_TOKENS=0`). The Effort dropdown is disabled in the
+  panel while the toggle is on.
+- The "Custom prompt instructions" field is now a vertically resizable
+  multiline textarea.
+- Live model suggestions in the panel's Model field: the full list is
+  fetched from each provider's models endpoint (1-hour cache) and new
+  models appear automatically in the dropdown, with a "Custom…" option to
+  type an ID outside the list.
+- Codex CLI: live model catalog via `codex debug models` and an Effort
+  dropdown with the reasoning levels of the selected model (1-hour cache;
+  static fallback when the CLI does not respond).
+- Claude CLI: Model dropdown with the `fable`, `opus`, `sonnet` and
+  `haiku` aliases, and an Effort dropdown with the 5 `--effort` levels.
 
-### Alterado
+### Changed
 
-- Painel de configurações: os campos do provider ativo (Model, Effort,
-  Base URL, Auth header) ficam na seção Provider; a seção "Advanced per
-  provider" foi removida.
-- Campo de idioma virou dropdown com lista de idiomas + opção "Custom…"
-  (antes: texto livre com datalist).
-- Selects do painel com seta SVG própria, border-radius de 5px e padding
-  ajustado.
+- Settings panel: the active provider's fields (Model, Effort, Base URL,
+  Auth header) live in the Provider section; the "Advanced per provider"
+  section was removed.
+- The language field became a dropdown with a language list plus a
+  "Custom…" option (previously: free text with a datalist).
+- Panel selects with their own SVG arrow, 5px border-radius and adjusted
+  padding.
 
 ## [0.1.0] - 2026-08-02
 
-Primeira versão funcional.
+First functional version.
 
-### Adicionado
+### Added
 
-- Geração de mensagem de commit (Conventional Commits) a partir do diff
-  staged, escrita na caixa de commit do Source Control para revisão, sem
-  nunca commitar automaticamente.
-- Botão com ícone de estrelinhas na caixa de commit (menu `scm/inputBox`,
-  API proposta `contribSourceControlInputBoxMenu`, habilitável via
-  `--enable-proposed-api=everton.generate-commit`), com fallback pela
-  Command Palette.
-- Providers plugáveis: OpenRouter, Anthropic-compatible (presets Kimi,
-  GLM, MiniMax e endpoint custom com auth `x-api-key` ou `bearer`), Claude
-  Code CLI e Codex CLI (ambos sem chave, usando o login do próprio CLI).
-- Painel Generate Commit na Activity Bar: formulário inline na sidebar com
-  todas as configurações (provider, modelo, chaves de API com status,
-  idioma, limites, comportamento, timeout e seções avançadas por provider),
-  validado e sem janelas flutuantes.
-- Segurança: varredura local de segredos com bloqueio por padrão (opt-in
-  por ocorrência), exclusão de lockfiles/binários/minificados/arquivos
-  grandes, truncamento sinalizado no prompt, chaves somente em
-  SecretStorage, somente HTTPS, zero telemetria, log apenas de metadados
-  com redação de segredos, cancelamento que mata o grupo de processos do
-  CLI e guarda contra gerações concorrentes e diff obsoleto.
-- Multi-repo com QuickPick de escolha quando ambíguo; suporte a diff
-  unstaged configurável (`ask`/`always`/`never`).
-- Erros de provider distintos e acionáveis (autenticação, créditos, rate
-  limit, servidor, rede, timeout).
-- Documentação: README, `docs/ARCHITECTURE.md`, `SECURITY.md`, tabela de
-  verificações datadas (endpoints, model IDs e flags verificados em fontes
-  oficiais em 2026-08-02).
+- Commit message generation (Conventional Commits) from the staged diff,
+  written into the Source Control commit box for review, never committing
+  automatically.
+- Button with a sparkles icon in the commit box (`scm/inputBox` menu,
+  proposed API `contribSourceControlInputBoxMenu`, enabled via
+  `--enable-proposed-api=everton.generate-commit`), with a Command Palette
+  fallback.
+- Pluggable providers: OpenRouter, Anthropic-compatible (Kimi, GLM, MiniMax
+  presets and a custom endpoint with `x-api-key` or `bearer` auth), Claude
+  Code CLI and Codex CLI (both keyless, using the CLI's own login).
+- Generate Commit panel on the Activity Bar: inline form in the sidebar
+  with every setting (provider, model, API keys with status, language,
+  limits, behavior, timeout and advanced per-provider sections), validated
+  and with no floating windows.
+- Security: local secret scanning with blocking by default (per-occurrence
+  opt-in), exclusion of lockfiles/binaries/minified/large files, truncation
+  flagged in the prompt, keys only in SecretStorage, HTTPS only, zero
+  telemetry, metadata-only logging with secret redaction, cancellation that
+  kills the CLI process group, and guards against concurrent generations
+  and stale diffs.
+- Multi-repo with a selection QuickPick when ambiguous; configurable
+  unstaged diff support (`ask`/`always`/`never`).
+- Distinct, actionable provider errors (authentication, credits, rate
+  limit, server, network, timeout).
+- Documentation: README, `docs/ARCHITECTURE.md`, `SECURITY.md`, dated
+  verification table (endpoints, model IDs and flags verified against
+  official sources on 2026-08-02).
 
 [0.1.0]: https://github.com/everton-dgn/generate-commit-extension/releases/tag/v0.1.0

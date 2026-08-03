@@ -8,9 +8,16 @@ node_modules/**
 **/*.ts
 **/*.mts
 .gitignore
+.env*
+.github/**
+CONTRIBUTING.md
+CODE_OF_CONDUCT.md
+SECURITY.md
+CHANGELOG.md
+docs/**
 biome.json
 tsconfig.json
-vitest.config.ts
+vitest.config.mts
 esbuild.config.mjs
 pnpm-workspace.yaml
 pnpm-lock.yaml

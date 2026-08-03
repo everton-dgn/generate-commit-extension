@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import type { API, GitExtension, Repository } from './typings/git';
 
-/** Retorna a API v1 da extensão git nativa, ativando a extensão se necessário. */
+/** Returns the built-in git extension's v1 API, activating the extension if needed. */
 export async function getGitApi(): Promise<API> {
   const extension = vscode.extensions.getExtension<GitExtension>('vscode.git');
   if (!extension) {
@@ -21,9 +21,9 @@ function extractRootUri(arg: unknown): vscode.Uri | undefined {
 }
 
 /**
- * Resolve o repositório alvo: a partir do argumento do comando (rootUri
- * passado pelo menu scm/inputBox, ou um SourceControl do scm/title), depois o
- * único repositório aberto, caso contrário um QuickPick.
+ * Resolves the target repository: from the command argument (rootUri passed
+ * by the scm/inputBox menu, or a SourceControl from scm/title), then the
+ * single open repository, otherwise a QuickPick.
  */
 export async function resolveRepository(api: API, arg: unknown): Promise<Repository | undefined> {
   const repositories = api.repositories;

@@ -12,14 +12,14 @@ export interface CodexCliConfig {
 }
 
 /**
- * Flags verificadas contra `codex exec --help` (codex-cli 0.146.0) e a
- * referência oficial de configuração (`model_reasoning_effort`: none, low,
- * medium, high, xhigh, max, ultra — níveis variam por modelo, lidos ao vivo
- * de `codex debug models`) em 2026-08-02. Nota: a flag `-a/--ask-for-approval`
- * sumiu do `--help` entre duas leituras no mesmo dia e versão (superfície de
- * CLI dinâmica), então a política de aprovação é fixada via chave de configuração.
- * `none` desliga o raciocínio (aceito mesmo não constando nos níveis por
- * modelo do catálogo; smoke test em 2026-08-02).
+ * Flags verified against `codex exec --help` (codex-cli 0.146.0) and the
+ * official configuration reference (`model_reasoning_effort`: none, low,
+ * medium, high, xhigh, max, ultra; levels vary per model, read live from
+ * `codex debug models`) on 2026-08-02. Note: the `-a/--ask-for-approval`
+ * flag vanished from `--help` between two reads on the same day and version
+ * (dynamic CLI surface), so the approval policy is pinned via config key.
+ * `none` disables reasoning (accepted even though it is not listed in the
+ * per-model catalog levels; smoke test on 2026-08-02).
  */
 export function buildCodexArgs(cfg: CodexCliConfig, outputFile: string): string[] {
   const args = [
@@ -48,9 +48,9 @@ export interface CodexCliDeps {
   readonly log?: (line: string) => void;
 }
 
-// Cache com escopo de sessão: createProviders recria as instâncias a cada
-// comando, então o caminho resolvido do binário precisa viver no escopo do
-// módulo para evitar nova detecção.
+// Session-scoped cache: createProviders recreates the instances on every
+// command, so the resolved binary path must live in module scope to avoid
+// re-detection.
 let cachedCodexPath: string | null | undefined;
 
 export function createCodexCliProvider(deps: CodexCliDeps): Provider {

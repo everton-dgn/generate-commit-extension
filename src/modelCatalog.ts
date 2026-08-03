@@ -2,27 +2,26 @@ import { getJson } from './http';
 import type { ProviderId } from './types';
 
 /**
- * Catálogo de modelos: busca a lista de modelos em tempo real no endpoint de
- * modelos de cada provider (verificado em 2026-08-02), mantém em cache por uma
- * hora e degrada para sugestões estáticas (ou nenhuma) quando a busca falha.
- * O campo Model continua aceitando texto livre; o catálogo só alimenta as
- * sugestões do datalist.
+ * Model catalog: fetches the live model list from each provider's models
+ * endpoint (verified 2026-08-02), caches it for one hour and degrades to
+ * static suggestions (or none) when the fetch fails. The Model field still
+ * accepts free text; the catalog only feeds the datalist suggestions.
  */
 
 export const MODELS_TTL_MS = 60 * 60 * 1000;
 
-/** Sugestões estáticas para providers de CLI (aliases verificados via --help). */
+/** Static suggestions for CLI providers (aliases verified via --help). */
 export const CLAUDE_CLI_MODELS: readonly string[] = ['fable', 'opus', 'sonnet', 'haiku'];
 
-/** Resolve o endpoint de modelos de um provider, respeitando base URLs editadas. */
+/** Resolves a provider's models endpoint, honoring edited base URLs. */
 export function modelsEndpointFor(id: ProviderId, baseUrl: string): string | null {
   const base = baseUrl.replace(/\/+$/, '');
   switch (id) {
     case 'openrouter':
       return `${base}/models`;
     case 'kimi':
-      // A base compatível com Anthropic é <host>/anthropic; os modelos ficam
-      // na API compatível com OpenAI em <host>/v1/models.
+      // The Anthropic-compatible base is <host>/anthropic; models live on
+      // the OpenAI-compatible API at <host>/v1/models.
       return base.endsWith('/anthropic')
         ? `${base.slice(0, -'/anthropic'.length)}/v1/models`
         : `${base}/v1/models`;
@@ -33,9 +32,9 @@ export function modelsEndpointFor(id: ProviderId, baseUrl: string): string | nul
         : `${base}/v1/models`;
     case 'minimax':
     case 'anthropicCustom':
-      // MiniMax mantém /anthropic de propósito: sua especificação oficial
-      // documenta GET <base>/anthropic/v1/models (auth X-Api-Key), ao contrário
-      // de Kimi/GLM, cujos catálogos ficam no caminho compatível com OpenAI.
+      // MiniMax keeps /anthropic on purpose: its official spec documents
+      // GET <base>/anthropic/v1/models (X-Api-Key auth), unlike Kimi/GLM,
+      // whose catalogs live on the OpenAI-compatible path.
       return `${base}/v1/models`;
     case 'claudeCli':
     case 'codexCli':
@@ -44,9 +43,9 @@ export function modelsEndpointFor(id: ProviderId, baseUrl: string): string | nul
 }
 
 /**
- * Extrai ids de modelo dos formatos comuns de lista: `{data:[{id}]}`,
- * `{models:[{id|name}]}` ou um array simples. Remove duplicatas e mantém a
- * ordem do provider.
+ * Extracts model ids from the common list formats: `{data:[{id}]}`,
+ * `{models:[{id|name}]}` or a plain array. Removes duplicates and keeps the
+ * provider's ordering.
  */
 export function parseModelListResponse(json: unknown): string[] {
   const out: string[] = [];
@@ -77,7 +76,7 @@ export function parseModelListResponse(json: unknown): string[] {
   return out;
 }
 
-/** Verificação de TTL do cache do catálogo. */
+/** Catalog cache TTL check. */
 export function shouldRefetch(fetchedAt: number | undefined, now: number, ttlMs: number): boolean {
   return fetchedAt === undefined || now - fetchedAt >= ttlMs;
 }
@@ -88,10 +87,9 @@ export interface ModelCatalogConfig {
 }
 
 /**
- * Header de auth conforme o contrato do endpoint de CATÁLOGO de cada provider,
- * que pode diferir do endpoint de mensagens: o MiniMax lista modelos atrás de
- * X-Api-Key mesmo seu endpoint de mensagens aceitando Bearer (verificado em
- * 2026-08-02).
+ * Auth header per each provider's CATALOG endpoint contract, which may differ
+ * from the messages endpoint: MiniMax lists models behind X-Api-Key even
+ * though its messages endpoint accepts Bearer (verified 2026-08-02).
  */
 export function catalogAuthHeader(
   id: ProviderId,
@@ -103,7 +101,7 @@ export function catalogAuthHeader(
   return { 'x-api-key': apiKey };
 }
 
-/** Assinatura do cache: refaz a busca quando o endpoint ou o estilo de auth muda. */
+/** Cache signature: refetches when the endpoint or auth style changes. */
 export function catalogSignature(id: ProviderId, cfg: ModelCatalogConfig): string {
   return `${modelsEndpointFor(id, cfg.baseUrl) ?? ''}|${cfg.auth}`;
 }
@@ -127,7 +125,7 @@ export class ModelCatalog {
 
   constructor(private readonly deps: ModelCatalogDeps) {}
 
-  /** Leitura síncrona: modelos em cache para o endpoint/auth ATUAL, aliases estáticos de CLI ou []. */
+  /** Synchronous read: cached models for the CURRENT endpoint/auth, static CLI aliases or []. */
   modelsFor(id: ProviderId): readonly string[] {
     if (id === 'claudeCli') return CLAUDE_CLI_MODELS;
     const signature = catalogSignature(id, this.deps.getConfig(id));
@@ -135,7 +133,10 @@ export class ModelCatalog {
     return entry && entry.signature === signature ? entry.models : [];
   }
 
-  /** Atualiza um provider quando o cache está velho (ou quando forçado, ou quando o endpoint/auth mudou); falhas mantêm o cache anterior. */
+  /**
+   * Refreshes a provider when the cache is stale (or forced, or when the
+   * endpoint/auth changed); failures keep the previous cache.
+   */
   async refresh(id: ProviderId, force = false): Promise<boolean> {
     if (id === 'claudeCli' || id === 'codexCli') return false;
     const cfg = this.deps.getConfig(id);
@@ -165,12 +166,14 @@ export class ModelCatalog {
       }
       return false;
     } catch {
-      // Offline, chave ausente ou endpoint desatualizado: mantém as sugestões anteriores.
+      // Offline, missing key or stale endpoint: the cache is kept, but old
+      // suggestions only surface when the current endpoint/auth signature
+      // matches; after a config change nothing stale is exposed.
       return false;
     }
   }
 
-  /** Atualiza todos os providers HTTP; true quando algum catálogo mudou. */
+  /** Refreshes all HTTP providers; true when any catalog changed. */
   async refreshAll(ids: readonly ProviderId[]): Promise<boolean> {
     const results = await Promise.all(ids.map((id) => this.refresh(id)));
     return results.some(Boolean);

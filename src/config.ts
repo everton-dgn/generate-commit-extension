@@ -103,7 +103,7 @@ function isHttpsUrl(url: string): boolean {
 function httpsOnly(url: string, fallback: string, onInvalid: (message: string) => void): string {
   const trimmed = url.trim().replace(/\/+$/, '');
   if (isHttpsUrl(trimmed)) return trimmed;
-  // Somente o host: a URL bruta pode conter credenciais que não devem chegar ao log.
+  // Host only: the raw URL may contain credentials that must not reach the log.
   if (trimmed)
     onInvalid(`Ignoring non-HTTPS base URL (host: ${hostOnly(url)}); HTTPS is required.`);
   return fallback;

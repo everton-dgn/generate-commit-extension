@@ -1,11 +1,11 @@
-/** Interpreta uma configuração de inteiro positivo; undefined quando inválida ou abaixo do mínimo. */
+/** Parses a positive-integer setting; undefined when invalid or below the minimum. */
 export function parseIntSetting(input: string, min: number): number | undefined {
   const value = Number(input.trim());
   if (!Number.isInteger(value) || value < min) return undefined;
   return value;
 }
 
-/** Vazio restaura o padrão do provider; caso contrário, exige uma URL HTTPS válida. */
+/** Empty restores the provider default; otherwise requires a valid HTTPS URL. */
 export function isValidBaseUrl(input: string): boolean {
   const trimmed = input.trim();
   if (trimmed === '') return true;
@@ -35,7 +35,7 @@ export const LANGUAGE_OPTIONS: readonly LanguageOption[] = [
   { code: 'ru', label: 'Русский' },
 ];
 
-// ---------- validação de mensagens do painel de configurações ----------
+// ---------- settings panel message validation ----------
 
 export type SettingKind = 'string' | 'integer' | 'boolean' | 'enum' | 'baseUrl';
 
@@ -46,10 +46,9 @@ export interface SettingSpec {
 }
 
 /**
- * Whitelist de todas as chaves que o painel de configurações pode gravar via
- * config.update. As chaves são relativas à seção generateCommit; chaves com
- * escopo de provider usam a forma "<id>.<campo>". Qualquer coisa fora deste
- * mapa é rejeitada.
+ * Whitelist of every key the settings panel may write via config.update.
+ * Keys are relative to the generateCommit section; provider-scoped keys use
+ * the "<id>.<field>" form. Anything outside this map is rejected.
  */
 export const PANEL_SETTINGS: Readonly<Record<string, SettingSpec>> = {
   provider: {
@@ -86,13 +85,13 @@ export type ValidatedValue = string | number | boolean;
 export type ValidationResult = { ok: true; value: ValidatedValue } | { ok: false };
 
 /**
- * Valida um valor vindo da webview do painel de configurações contra a
- * whitelist. Nunca confie em mensagens da webview: chaves desconhecidas e
- * tipos incompatíveis são rejeitados.
+ * Validates a value coming from the settings panel webview against the
+ * whitelist. Never trust webview messages: unknown keys and mismatched
+ * types are rejected.
  */
 export function validateSettingValue(key: string, value: unknown): ValidationResult {
-  // Object.hasOwn bloqueia membros herdados (__proto__, constructor, ...),
-  // que de outra forma passariam na verificação de verdade abaixo.
+  // Object.hasOwn blocks inherited members (__proto__, constructor, ...),
+  // which would otherwise pass the truthiness check below.
   const spec = Object.hasOwn(PANEL_SETTINGS, key) ? PANEL_SETTINGS[key] : undefined;
   if (!spec) return { ok: false };
   switch (spec.kind) {
@@ -116,10 +115,10 @@ export function validateSettingValue(key: string, value: unknown): ValidationRes
     case 'string': {
       if (typeof value !== 'string') return { ok: false };
       const trimmed = value.trim();
-      // A sentinela Custom… é um controle de UI, nunca um valor persistível:
-      // como id de modelo ela viraria um modelo inexistente, e como idioma ela
-      // duplicaria o value da opção Custom… no select, tornando o modo de
-      // texto livre inalcançável.
+      // The Custom… sentinel is a UI control, never a persistable value:
+      // as a model id it would become a nonexistent model, and as a language
+      // it would duplicate the Custom… option's value in the select, making
+      // free-text mode unreachable.
       if ((key.endsWith('.model') || key === 'language') && trimmed === CUSTOM_MODEL_VALUE) {
         return { ok: false };
       }
@@ -128,7 +127,7 @@ export function validateSettingValue(key: string, value: unknown): ValidationRes
   }
 }
 
-/** Restringe os ids de provider que aceitam API key (alvos do secret storage). */
+/** Narrows the provider ids that accept an API key (secret storage targets). */
 export function isKeyBackedProvider(
   id: string,
 ): id is 'openrouter' | 'kimi' | 'glm' | 'minimax' | 'anthropicCustom' {
@@ -141,9 +140,9 @@ export function isKeyBackedProvider(
   );
 }
 
-// ---------- opções do dropdown de modelo ----------
+// ---------- model dropdown options ----------
 
-/** Opção sentinela no select de modelo que alterna para o modo de texto livre. */
+/** Sentinel option in the model select that switches to free-text mode. */
 export const CUSTOM_MODEL_VALUE = '__custom';
 
 export interface ModelOption {
@@ -152,10 +151,10 @@ export interface ModelOption {
 }
 
 /**
- * Opções do dropdown de modelo: primeiro a opção vazia de padrão do provider,
- * o valor atual quando não está no catálogo (para um modelo customizado nunca
- * sumir de repente), cada entrada do catálogo exceto qualquer colisão literal
- * com a sentinela, e a sentinela Custom… no final.
+ * Model dropdown options: first the empty provider-default option, the
+ * current value when it is not in the catalog (so a custom model never
+ * suddenly disappears), each catalog entry except any literal collision
+ * with the sentinel, and the Custom… sentinel at the end.
  */
 export function buildModelOptions(
   models: readonly string[],
@@ -173,8 +172,8 @@ export function buildModelOptions(
 }
 
 /**
- * Níveis de esforço do Claude Code CLI, verificados contra `claude --help`
- * (Claude Code 2.1.220) em 2026-08-02.
+ * Claude Code CLI effort levels, checked against `claude --help`
+ * (Claude Code 2.1.220) on 2026-08-02.
  */
 export const CLAUDE_CLI_EFFORT_LEVELS: readonly string[] = [
   'low',
@@ -185,9 +184,9 @@ export const CLAUDE_CLI_EFFORT_LEVELS: readonly string[] = [
 ];
 
 /**
- * Opções do dropdown de esforço: primeiro a opção vazia de padrão do CLI,
- * o valor atual quando não está na lista (para um nível desconhecido nunca
- * sumir de repente) e cada nível suportado.
+ * Effort dropdown options: first the empty CLI-default option, the current
+ * value when it is not in the list (so an unknown level never suddenly
+ * disappears) and each supported level.
  */
 export function buildEffortOptions(
   levels: readonly string[],
@@ -203,14 +202,14 @@ export function buildEffortOptions(
   return { options, selected: current };
 }
 
-// ---------- protocolo de mensagens do painel de configurações ----------
+// ---------- settings panel message protocol ----------
 
 export type PanelMessage =
   | { type: 'ready' }
   | { type: 'update'; key: string; value: unknown }
   | { type: 'saveKey'; provider: string; value: string; force: boolean };
 
-/** Interpreta e sanitiza um postMessage bruto vindo da webview do painel de configurações. */
+/** Parses and sanitizes a raw postMessage from the settings panel webview. */
 export function parseMessage(raw: unknown): PanelMessage | undefined {
   if (typeof raw !== 'object' || raw === null) return undefined;
   const msg = raw as {
