@@ -127,7 +127,8 @@ textarea.control {
 }
 
 /* Verde do "passed" do tema escurecido e levemente azulado via color-mix
-   (encapsulado em @supports: engines sem color-mix ficam com o verde puro). */
+   (encapsulado em @supports: engines sem color-mix ficam com o verde puro).
+   O fallback do charts.blue espelha o default do core (#3794ff). */
 .checkbox-row input[type="checkbox"]:checked {
   background: var(--vscode-testing-iconPassed, #73c991);
   border-color: var(--vscode-testing-iconPassed, #73c991);
@@ -138,12 +139,12 @@ textarea.control {
     background: color-mix(
       in srgb,
       var(--vscode-testing-iconPassed, #73c991) 75%,
-      var(--vscode-charts-blue, #1f6f8b)
+      var(--vscode-charts-blue, #3794ff)
     );
     border-color: color-mix(
       in srgb,
       var(--vscode-testing-iconPassed, #73c991) 75%,
-      var(--vscode-charts-blue, #1f6f8b)
+      var(--vscode-charts-blue, #3794ff)
     );
   }
 }
