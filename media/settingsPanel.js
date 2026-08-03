@@ -4,6 +4,20 @@
   const app = document.getElementById('app');
   let state = null;
 
+  // Modalidade da última interação: o anel de foco dos switches só aparece
+  // na navegação por teclado (no Chromium, checkbox casa :focus-visible até
+  // em clique de mouse).
+  document.addEventListener(
+    'pointerdown',
+    () => document.body.setAttribute('data-modality', 'pointer'),
+    true,
+  );
+  document.addEventListener(
+    'keydown',
+    () => document.body.setAttribute('data-modality', 'keyboard'),
+    true,
+  );
+
   window.addEventListener('message', (event) => {
     const message = event.data;
     if (!message || typeof message !== 'object') return;
