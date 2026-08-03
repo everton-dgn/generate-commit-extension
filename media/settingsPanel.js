@@ -142,7 +142,7 @@
     input.checked = Boolean(value);
     input.dataset.key = key;
     input.addEventListener('change', () => sendUpdate(key, input.checked));
-    wrap.append(input, document.createTextNode(` ${labelText}`));
+    wrap.append(input, document.createTextNode(labelText));
     return wrap;
   }
 

@@ -84,9 +84,75 @@ textarea.control {
 .checkbox-row {
   display: flex;
   align-items: center;
+  gap: 8px;
   margin: 10px 0;
   cursor: pointer;
   font-size: 0.95em;
+}
+
+/* Switch em CSS puro sobre o checkbox nativo: o input vira o trilho e o
+   ::before vira o polegar. O elemento continua checkbox (acessibilidade,
+   foco e a lógica de checked intactos); zero JS e zero imagens, então a CSP
+   segue intacta. */
+.checkbox-row input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  position: relative;
+  flex-shrink: 0;
+  width: 32px;
+  height: 18px;
+  margin: 0;
+  border-radius: 999px;
+  /* Em temas claros input-background costuma ser igual ao fundo do painel e
+     input-border indefinido: sem o fallback o trilho desligado some. */
+  border: 1px solid var(--vscode-input-border, var(--vscode-descriptionForeground));
+  background: var(--vscode-input-background);
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.checkbox-row input[type="checkbox"]::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 2px;
+  transform: translateY(-50%);
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--vscode-input-foreground);
+  transition: left 0.15s ease;
+}
+
+.checkbox-row input[type="checkbox"]:checked {
+  background: var(--vscode-button-background);
+  border-color: var(--vscode-button-background);
+}
+
+/* Inputs usam border-box: o trilho de 32px tem padding box de 30px (borda
+   1px de cada lado). Polegar de 12px em left: 16px => recuos de 3px dos dois
+   lados (medido no Chromium em 2026-08-02). */
+.checkbox-row input[type="checkbox"]:checked::before {
+  left: 16px;
+  background: var(--vscode-button-foreground);
+}
+
+.checkbox-row input[type="checkbox"]:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: 1px;
+}
+
+.checkbox-row input[type="checkbox"]:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* O :checked acima tem especificidade maior que .invalid-flash sozinho:
+   sem repetir o seletor, o flash de erro nunca aparece em switch ligado. */
+.checkbox-row input[type="checkbox"].invalid-flash,
+.checkbox-row input[type="checkbox"].invalid-flash:checked {
+  border-color: var(--vscode-inputValidation-errorBorder, #f14c4c);
 }
 
 button {
