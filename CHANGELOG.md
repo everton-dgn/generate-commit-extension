@@ -12,6 +12,21 @@ versionamento semântico.
   buscada no endpoint de modelos de cada provider (cache de 1 hora) e
   modelos novos aparecem automaticamente no dropdown, com a opção "Custom…"
   para digitar um ID fora da lista.
+- Codex CLI: catálogo vivo de modelos via `codex debug models` e dropdown
+  de Effort com os níveis de reasoning do modelo selecionado (cache de 1
+  hora; fallback estático quando o CLI não responde).
+- Claude CLI: dropdown de Model com os aliases `fable`, `opus`, `sonnet` e
+  `haiku`, e dropdown de Effort com os 5 níveis do `--effort`.
+
+### Alterado
+
+- Painel de configurações: os campos do provider ativo (Model, Effort,
+  Base URL, Auth header) ficam na seção Provider; a seção "Advanced per
+  provider" foi removida.
+- Campo de idioma virou dropdown com lista de idiomas + opção "Custom…"
+  (antes: texto livre com datalist).
+- Selects do painel com seta SVG própria, border-radius de 5px e padding
+  ajustado.
 
 ## [0.1.0] - 2026-08-02
 

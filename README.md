@@ -37,14 +37,15 @@ Em modo de desenvolvimento (F5), a proposta funciona sem flags.
   Provider / Model`.
 - Painel **Generate Commit** na barra lateral esquerda (ícone de
   estrelinhas): todas as configurações em um formulário inline na própria
-  sidebar, com valor atual de cada uma (provider, chaves com status, idioma,
-  limites, prompt customizado, fallback, timeout e seções avançadas por
-  provider), sem nenhuma janela flutuante e sem editar JSON.
+  sidebar — provider, modelo, esforço (CLIs), base URL e estilo de auth do
+  provider ativo, chaves com status, idioma, limites, prompt customizado,
+  fallback e timeout — sem nenhuma janela flutuante e sem editar JSON.
 - **Sugestões de modelo ao vivo**: o campo Model mostra a lista completa
   atual do provider (buscada no endpoint de modelos dele a cada hora, com
   fallback silencioso para texto livre). Modelo novo lançado pelo provider
   aparece sozinho na lista; a opção "Custom…" permite digitar um ID fora
-  dela.
+  dela. No Codex CLI a lista vem de `codex debug models`, e o campo Effort
+  mostra só os níveis de reasoning que o modelo selecionado suporta.
 - Primeiro uso guiado: sem nenhum provider disponível, o fluxo abre a
   configuração (escolha do provider, chave mascarada, validação rápida,
   salvamento no Secret Storage).
@@ -95,7 +96,15 @@ Notas:
   MiniMax e Anthropic com a chave configurada), com cache de 1 hora. Se a
   busca falhar (sem chave, rede, endpoint custom sem listagem), o campo
   segue texto livre sem erro. Claude CLI sugere os aliases estáticos
-  (`fable`, `opus`, `sonnet`, `haiku`); Codex CLI segue texto livre.
+  (`fable`, `opus`, `sonnet`, `haiku`, verificados com `claude --help`
+  2.1.220); Codex CLI lê o catálogo vivo de `codex debug models`
+  (codex-cli 0.146.0), que também informa os níveis de esforço de cada
+  modelo — o campo Effort do painel mostra apenas os níveis válidos para o
+  modelo selecionado.
+- Kimi for Coding: quem tem chave do serviço `api.kimi.com/coding` (em vez
+  da plataforma Moonshot) pode apontar `generateCommit.kimi.baseUrl` para
+  `https://api.kimi.com/coding` — mensagens (`/v1/messages`) e catálogo
+  (`/v1/models`) funcionam nesse host (verificado em 2026-08-02).
 
 ### Configurar uma chave de API
 
@@ -125,8 +134,8 @@ Settings do editor (filtre por `generateCommit`).
 | `generateCommit.<provider>.model` | ver tabela | Modelo por provider. |
 | `generateCommit.<provider>.baseUrl` | ver tabela | Base URL por provider HTTP (somente HTTPS). |
 | `generateCommit.anthropicCustom.authHeader` | `x-api-key` | Estilo de auth do endpoint custom (`x-api-key` ou `bearer`). |
-| `generateCommit.claudeCli.effort` | `low` | `--effort` do Claude Code (`low` a `max`, vazio = default do CLI). |
-| `generateCommit.codexCli.effort` | `low` | `model_reasoning_effort` do Codex. Os valores aceitos dependem do modelo (verificado em 2026-08-02 no modelo default: `none`, `low`, `medium`, `high`, `xhigh`, `max`; a referência de config também lista `minimal`). Vazio = default do CLI. |
+| `generateCommit.claudeCli.effort` | `low` | `--effort` do Claude Code (`low`, `medium`, `high`, `xhigh`, `max`; vazio = default do CLI). |
+| `generateCommit.codexCli.effort` | `low` | `model_reasoning_effort` do Codex. Os valores aceitos dependem do modelo — o painel lista os níveis do modelo selecionado, lidos ao vivo de `codex debug models` (em 2026-08-02: `low` a `xhigh` em todos; `max` e `ultra` na família gpt-5.6). Vazio = default do CLI. |
 
 ## Segurança
 

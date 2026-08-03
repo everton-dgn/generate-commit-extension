@@ -30,19 +30,14 @@ h2 {
   margin: 2px 0 0;
 }
 
-.hint-inline {
-  color: var(--vscode-descriptionForeground);
-  font-size: 0.85em;
-}
-
 .control {
   width: 100%;
   box-sizing: border-box;
   background: var(--vscode-input-background);
   color: var(--vscode-input-foreground);
   border: 1px solid var(--vscode-input-border, transparent);
-  border-radius: 2px;
-  padding: 4px 6px;
+  border-radius: 5px;
+  padding: 4px 8px;
   font-family: inherit;
   font-size: inherit;
 }
@@ -52,8 +47,31 @@ h2 {
   outline-offset: -1px;
 }
 
-select.control {
+.select-wrap {
+  position: relative;
+  display: block;
+}
+
+.select-wrap select.control {
   cursor: pointer;
+  /* Esconde a seta nativa: a seta SVG do wrapper toma o lugar. */
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 26px;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.select-arrow {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 14px;
+  height: 14px;
+  pointer-events: none;
+  color: var(--vscode-descriptionForeground);
 }
 
 .checkbox-row {
@@ -68,7 +86,7 @@ button {
   background: var(--vscode-button-background);
   color: var(--vscode-button-foreground);
   border: none;
-  border-radius: 2px;
+  border-radius: 5px;
   padding: 5px 12px;
   cursor: pointer;
   font-family: inherit;
@@ -153,19 +171,6 @@ button:hover {
   font-size: 0.85em;
   min-height: 1.2em;
   margin: 4px 0 0;
-}
-
-details {
-  margin: 6px 0;
-  border: 1px solid var(--vscode-panel-border, transparent);
-  border-radius: 3px;
-  padding: 4px 8px;
-}
-
-summary {
-  cursor: pointer;
-  font-size: 0.95em;
-  padding: 2px 0;
 }
 
 .loading {

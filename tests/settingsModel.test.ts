@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { PROVIDERS } from '../src/providers/registry';
 import {
-  advancedItemsFor,
   isKeyBackedProvider,
   isValidBaseUrl,
   LANGUAGE_OPTIONS,
@@ -39,27 +38,6 @@ describe('isValidBaseUrl', () => {
     expect(isValidBaseUrl('https://')).toBe(false);
     expect(isValidBaseUrl('https://?x=1')).toBe(false);
     expect(isValidBaseUrl('https:// espaço')).toBe(false);
-  });
-});
-
-describe('advancedItemsFor', () => {
-  it('returns editable items for every declared provider', () => {
-    for (const meta of PROVIDERS) {
-      expect(advancedItemsFor(meta.id).length).toBeGreaterThan(0);
-    }
-  });
-
-  it('exposes authHeader only for the custom endpoint', () => {
-    expect(advancedItemsFor('anthropicCustom').map((i) => i.key)).toContain('authHeader');
-    expect(advancedItemsFor('kimi').map((i) => i.key)).not.toContain('authHeader');
-  });
-
-  it('exposes effort as enum for claude and free text for codex', () => {
-    const claude = advancedItemsFor('claudeCli').find((i) => i.key === 'effort');
-    expect(claude?.kind).toBe('enum');
-    expect(claude?.options).toContain('max');
-    const codex = advancedItemsFor('codexCli').find((i) => i.key === 'effort');
-    expect(codex?.kind).toBe('text');
   });
 });
 
@@ -121,6 +99,12 @@ describe('validateSettingValue', () => {
     expect(validateSettingValue('customPrompt', CUSTOM_MODEL_VALUE).ok).toBe(true);
   });
 
+  it('rejects the Custom sentinel as a language (it would deadlock the select)', async () => {
+    const { validateSettingValue, CUSTOM_MODEL_VALUE } = await import('../src/settingsModel');
+    expect(validateSettingValue('language', CUSTOM_MODEL_VALUE).ok).toBe(false);
+    expect(validateSettingValue('language', 'pt-BR')).toEqual({ ok: true, value: 'pt-BR' });
+  });
+
   it('covers every key the panel is allowed to write', () => {
     const expected = [
       'provider',
@@ -133,9 +117,21 @@ describe('validateSettingValue', () => {
       'timeoutSeconds',
     ];
     for (const key of expected) expect(PANEL_SETTINGS[key]).toBeDefined();
+    // Campos por provider que o painel expõe na seção Provider.
+    const perProvider: Record<string, readonly string[]> = {
+      openrouter: ['model', 'baseUrl'],
+      kimi: ['model', 'baseUrl'],
+      glm: ['model', 'baseUrl'],
+      minimax: ['model', 'baseUrl'],
+      anthropicCustom: ['model', 'baseUrl', 'authHeader'],
+      claudeCli: ['model', 'effort'],
+      codexCli: ['model', 'effort'],
+    };
     for (const meta of PROVIDERS) {
-      for (const item of advancedItemsFor(meta.id)) {
-        expect(PANEL_SETTINGS[`${meta.id}.${item.key}`]).toBeDefined();
+      const fields = perProvider[meta.id];
+      expect(fields).toBeDefined();
+      for (const field of fields ?? []) {
+        expect(PANEL_SETTINGS[`${meta.id}.${field}`]).toBeDefined();
       }
     }
   });
@@ -242,5 +238,30 @@ describe('buildModelOptions purity', () => {
     const frozen = Object.freeze(models);
     expect(() => buildModelOptions(frozen, 'custom-x')).not.toThrow();
     expect(models).toEqual(['a', 'b']);
+  });
+});
+
+describe('buildEffortOptions', () => {
+  it('puts the CLI default first, then the levels in order', async () => {
+    const { buildEffortOptions } = await import('../src/settingsModel');
+    const { options, selected } = buildEffortOptions(['low', 'high'], 'high');
+    expect(options.map((o) => o.value)).toEqual(['', 'low', 'high']);
+    expect(options[0]).toEqual({ value: '', label: '(CLI default)' });
+    expect(selected).toBe('high');
+  });
+
+  it('keeps an unknown current value right after the default', async () => {
+    const { buildEffortOptions } = await import('../src/settingsModel');
+    const { options, selected } = buildEffortOptions(['low'], 'turbo');
+    expect(options.map((o) => o.value)).toEqual(['', 'turbo', 'low']);
+    expect(options[1]).toEqual({ value: 'turbo', label: 'turbo (current)' });
+    expect(selected).toBe('turbo');
+  });
+
+  it('works with an empty level list', async () => {
+    const { buildEffortOptions } = await import('../src/settingsModel');
+    const { options, selected } = buildEffortOptions([], '');
+    expect(options.map((o) => o.value)).toEqual(['']);
+    expect(selected).toBe('');
   });
 });

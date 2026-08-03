@@ -2,9 +2,11 @@
 .git/**
 src/**
 tests/**
+scripts/**
 node_modules/**
 **/*.map
 **/*.ts
+**/*.mts
 .gitignore
 biome.json
 tsconfig.json

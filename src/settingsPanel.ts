@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { CodexCliCatalog } from './cliCatalog';
 import { readAppConfig, readProviderConfig, secretKeyFor } from './config';
 import { logMeta } from './log';
 import { MODELS_TTL_MS, ModelCatalog } from './modelCatalog';
@@ -10,7 +11,9 @@ import {
   validateApiKey,
 } from './providersRuntime';
 import {
+  buildEffortOptions,
   buildModelOptions,
+  CLAUDE_CLI_EFFORT_LEVELS,
   CUSTOM_MODEL_VALUE,
   isKeyBackedProvider,
   LANGUAGE_OPTIONS,
@@ -39,6 +42,8 @@ interface PanelProviderState {
   readonly models: readonly string[];
   readonly modelOptions: readonly ModelOption[];
   readonly modelSelected: string;
+  readonly effortOptions: readonly ModelOption[];
+  readonly effortSelected: string;
 }
 
 interface PanelState {
@@ -66,6 +71,7 @@ export class SettingsPanelProvider implements vscode.WebviewViewProvider {
   private view?: vscode.WebviewView;
   private readonly listener: vscode.Disposable;
   private readonly catalog: ModelCatalog;
+  private readonly codexCatalog: CodexCliCatalog;
   private readonly catalogAbort = new AbortController();
   private refreshTimer?: ReturnType<typeof setInterval>;
 
@@ -76,6 +82,11 @@ export class SettingsPanelProvider implements vscode.WebviewViewProvider {
         const cfg = readProviderConfig(id);
         return { baseUrl: cfg.baseUrl, auth: cfg.auth };
       },
+      now: () => Date.now(),
+      timeoutMs: 10_000,
+      signal: this.catalogAbort.signal,
+    });
+    this.codexCatalog = new CodexCliCatalog({
       now: () => Date.now(),
       timeoutMs: 10_000,
       signal: this.catalogAbort.signal,
@@ -108,6 +119,13 @@ export class SettingsPanelProvider implements vscode.WebviewViewProvider {
     view.onDidDispose(
       () => {
         this.view = undefined;
+        // A view pode ser reaberta depois: sem limpar aqui, cada reabertura
+        // empilharia um novo interval e ticks antigos continuariam spawnando
+        // buscas de catálogo (inclusive processos CLI) com o painel fechado.
+        if (this.refreshTimer !== undefined) {
+          clearInterval(this.refreshTimer);
+          this.refreshTimer = undefined;
+        }
       },
       undefined,
       this.context.subscriptions,
@@ -150,14 +168,16 @@ export class SettingsPanelProvider implements vscode.WebviewViewProvider {
     // Mantém os catálogos atualizados enquanto o painel estiver aberto; o
     // portão de TTL em refresh() torna isso um no-op até que uma entrada
     // realmente expire.
+    if (this.refreshTimer !== undefined) clearInterval(this.refreshTimer);
     this.refreshTimer = setInterval(() => this.refreshCatalogs(), MODELS_TTL_MS);
   }
 
   private refreshCatalogs(): void {
-    this.catalog
-      .refreshAll(PROVIDERS.map((meta) => meta.id))
-      .then((changed) => {
-        if (changed) return this.pushState();
+    const httpRefresh = this.catalog.refreshAll(PROVIDERS.map((meta) => meta.id));
+    const codexRefresh = this.codexCatalog.refresh();
+    Promise.all([httpRefresh, codexRefresh])
+      .then(([httpChanged, codexChanged]) => {
+        if (httpChanged || codexChanged) return this.pushState();
         return undefined;
       })
       .catch((err: unknown) => {
@@ -175,8 +195,18 @@ export class SettingsPanelProvider implements vscode.WebviewViewProvider {
     const providerStates: PanelProviderState[] = PROVIDERS.map((meta) => {
       const runtime = readProviderConfig(meta.id);
       const available = Boolean(availability[meta.id]);
-      const models = this.catalog.modelsFor(meta.id);
+      const models =
+        meta.id === 'codexCli'
+          ? (this.codexCatalog.snapshot()?.models ?? [])
+          : this.catalog.modelsFor(meta.id);
       const { options, selected } = buildModelOptions(models, runtime.model);
+      const effortLevels =
+        meta.id === 'claudeCli'
+          ? CLAUDE_CLI_EFFORT_LEVELS
+          : meta.id === 'codexCli'
+            ? this.codexCatalog.effortsFor(runtime.model)
+            : [];
+      const effort = buildEffortOptions(effortLevels, runtime.effort);
       return {
         id: meta.id,
         label: meta.label,
@@ -195,6 +225,8 @@ export class SettingsPanelProvider implements vscode.WebviewViewProvider {
         models,
         modelOptions: options,
         modelSelected: selected,
+        effortOptions: effort.options,
+        effortSelected: effort.selected,
       };
     });
     return {

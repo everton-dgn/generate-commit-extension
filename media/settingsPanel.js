@@ -30,7 +30,15 @@
 
   function field(labelText, control, hintText) {
     const wrap = el('div', 'field');
-    wrap.append(el('label', '', labelText));
+    const label = el('label', '', labelText);
+    // O label não pode usar htmlFor (o controle não tem id estável), então o
+    // clique nele foca o primeiro controle do campo, inclusive dentro do
+    // .select-wrap.
+    label.addEventListener('click', () => {
+      const target = wrap.querySelector('.control, input, select');
+      if (target) target.focus();
+    });
+    wrap.append(label);
     wrap.append(control);
     if (hintText) wrap.append(el('p', 'hint', hintText));
     return wrap;
@@ -66,6 +74,30 @@
     return input;
   }
 
+  // Seta customizada em SVG inline criada via DOM: a CSP bloqueia imagens
+  // (img-src 'none'), então background-image/data URI não funcionariam.
+  function selectArrow() {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('class', 'select-arrow');
+    svg.setAttribute('viewBox', '0 0 16 16');
+    svg.setAttribute('aria-hidden', 'true');
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', 'M4 6l4 4 4-4');
+    path.setAttribute('fill', 'none');
+    path.setAttribute('stroke', 'currentColor');
+    path.setAttribute('stroke-width', '1.5');
+    path.setAttribute('stroke-linecap', 'round');
+    path.setAttribute('stroke-linejoin', 'round');
+    svg.append(path);
+    return svg;
+  }
+
+  function wrapSelect(select) {
+    const wrap = el('span', 'select-wrap');
+    wrap.append(select, selectArrow());
+    return wrap;
+  }
+
   function selectInput(key, value, options) {
     const select = el('select', 'control');
     select.dataset.key = key;
@@ -76,7 +108,7 @@
       select.append(option);
     }
     select.addEventListener('change', () => sendUpdate(key, select.value));
-    return select;
+    return wrapSelect(select);
   }
 
   function checkboxInput(key, value, labelText) {
@@ -113,10 +145,13 @@
     return datalist;
   }
 
-  // O modo de texto livre é indexado pela chave de CONFIG intencionalmente: os
-  // controles de modelo principal e avançado de um provider editam a mesma
-  // configuração, então os dois alternam juntos e ficam consistentes.
+  // O modo de texto livre é indexado pela chave de CONFIG: cada configuração
+  // alterna entre select e input de forma independente e consistente.
   const customMode = {};
+
+  // fkey do campo de texto livre que deve receber foco após a re-renderização
+  // que troca o select pelo input (escolha de "Custom…").
+  let pendingFocus = null;
 
   function modelControl(provider, key, idSuffix, fkey) {
     const hasCatalog = provider.models.length > 0;
@@ -152,14 +187,16 @@
       if (select.value === state.customModelValue) {
         customMode[key] = true;
         // Tira o foco antes de re-renderizar: caso contrário, a restauração de
-        // foco inseriria o valor sentinela no novo input de texto livre.
+        // foco inseriria o valor sentinela no novo input de texto livre. O
+        // pendingFocus devolve o foco ao input depois do render.
+        pendingFocus = select.dataset.fkey || null;
         select.blur();
         render();
         return;
       }
       sendUpdate(key, select.value);
     });
-    return select;
+    return wrapSelect(select);
   }
 
   function renderProviderSection() {
@@ -171,27 +208,101 @@
     if (active) {
       const control = modelControl(active, `${active.id}.model`, 'main', `main:${active.id}.model`);
       section.append(field('Model', control, active.availabilityNote));
+      if (active.kind === 'cli') {
+        const effortOptions = active.effortOptions.map((o) => [o.value, o.label]);
+        // O valor salvo fora da lista do modelo selecionado aparece como
+        // "(current)"; o hint deixa claro que ele pode ser incompatível.
+        const currentOpt = active.effortOptions.find((o) => o.value === active.effortSelected);
+        const unsupported =
+          active.effortSelected !== '' && currentOpt && currentOpt.label.endsWith('(current)');
+        section.append(
+          field(
+            'Effort',
+            selectInput(`${active.id}.effort`, active.effortSelected, effortOptions),
+            unsupported ? 'not supported by the selected model' : undefined,
+          ),
+        );
+      } else {
+        section.append(
+          field('Base URL (HTTPS only)', textInput(`${active.id}.baseUrl`, active.baseUrl)),
+        );
+        if (active.id === 'anthropicCustom') {
+          section.append(
+            field(
+              'Auth header style',
+              selectInput(`${active.id}.authHeader`, active.authHeader, [
+                ['x-api-key', 'x-api-key'],
+                ['bearer', 'bearer'],
+              ]),
+            ),
+          );
+        }
+      }
     }
     return section;
+  }
+
+  // O modo de texto livre do idioma compartilha o mapa customMode do modelo:
+  // ambos são indexados pela chave de configuração.
+  function languageControl() {
+    const key = 'language';
+    if (customMode[key]) {
+      const input = textInput(key, state.language, 'en, pt-BR, ...');
+      input.dataset.fkey = 'main:language';
+      const wrap = el('span', 'model-control');
+      wrap.append(input);
+      const back = el('button', 'link-btn', 'Choose from list');
+      back.type = 'button';
+      back.title = 'Show the language list';
+      back.addEventListener('click', () => {
+        delete customMode[key];
+        render();
+      });
+      wrap.append(back);
+      return wrap;
+    }
+    const select = el('select', 'control');
+    select.dataset.key = key;
+    select.dataset.fkey = 'main:language';
+    const known = state.languages.some((l) => l.code === state.language);
+    if (state.language && !known) {
+      const opt = el('option', '', `${state.language} (current)`);
+      opt.value = state.language;
+      opt.selected = true;
+      select.append(opt);
+    }
+    for (const lang of state.languages) {
+      const opt = el('option', '', `${lang.label} (${lang.code})`);
+      opt.value = lang.code;
+      if (lang.code === state.language) opt.selected = true;
+      select.append(opt);
+    }
+    const custom = el('option', '', 'Custom…');
+    custom.value = state.customModelValue;
+    select.append(custom);
+    select.addEventListener('change', () => {
+      if (select.value === state.customModelValue) {
+        customMode[key] = true;
+        // Tira o foco antes de re-renderizar: caso contrário, a restauração de
+        // foco inseriria o valor sentinela no novo input de texto livre. O
+        // pendingFocus devolve o foco ao input depois do render.
+        pendingFocus = select.dataset.fkey || null;
+        select.blur();
+        render();
+        return;
+      }
+      sendUpdate(key, select.value);
+    });
+    return wrapSelect(select);
   }
 
   function renderBehaviorSection() {
     const section = el('section');
     section.append(el('h2', '', 'Behavior'));
 
-    const langInput = textInput('language', state.language, 'en, pt-BR, ...');
-    langInput.setAttribute('list', 'gc-languages');
-    const datalist = el('datalist');
-    datalist.id = 'gc-languages';
-    for (const lang of state.languages) {
-      const option = el('option');
-      option.value = lang.code;
-      option.label = lang.label;
-      datalist.append(option);
-    }
-    const langField = field('Message language', langInput, 'Conventional Commits in this language');
-    langField.append(datalist);
-    section.append(langField);
+    section.append(
+      field('Message language', languageControl(), 'Conventional Commits in this language'),
+    );
 
     section.append(
       field(
@@ -269,72 +380,6 @@
     return section;
   }
 
-  function advancedControl(provider, key, label, kind, options) {
-    const fullKey = `${provider.id}.${key}`;
-    const current =
-      key === 'model'
-        ? provider.model
-        : key === 'baseUrl'
-          ? provider.baseUrl
-          : key === 'authHeader'
-            ? provider.authHeader
-            : provider.effort;
-    if (kind === 'enum') {
-      const opts = options.map((o) => [o, o === '' ? '(provider default)' : o]);
-      return field(label, selectInput(fullKey, current, opts));
-    }
-    if (key === 'model') {
-      // Identidade de foco distinta: o campo de modelo principal deste provider
-      // usa a mesma chave de configuração, então o controle avançado precisa do seu próprio fkey.
-      return field(label, modelControl(provider, fullKey, `${provider.id}-adv`, `adv:${fullKey}`));
-    }
-    return field(label, textInput(fullKey, current));
-  }
-
-  function renderAdvancedSection() {
-    const section = el('section');
-    section.append(el('h2', '', 'Advanced per provider'));
-    for (const provider of state.providers) {
-      const details = el('details');
-      const summary = el('summary');
-      summary.append(
-        el('span', '', provider.label),
-        el('span', 'hint-inline', ` ${provider.model || 'provider default'}`),
-      );
-      details.append(summary);
-      details.append(el('p', 'hint', provider.availabilityNote));
-      details.append(advancedControl(provider, 'model', 'Model', 'text'));
-      if (provider.kind === 'http') {
-        details.append(advancedControl(provider, 'baseUrl', 'Base URL (HTTPS only)', 'text'));
-      }
-      if (provider.id === 'anthropicCustom') {
-        details.append(
-          advancedControl(provider, 'authHeader', 'Auth header style', 'enum', [
-            'x-api-key',
-            'bearer',
-          ]),
-        );
-      }
-      if (provider.id === 'claudeCli') {
-        details.append(
-          advancedControl(provider, 'effort', 'Effort', 'enum', [
-            '',
-            'low',
-            'medium',
-            'high',
-            'xhigh',
-            'max',
-          ]),
-        );
-      }
-      if (provider.id === 'codexCli') {
-        details.append(advancedControl(provider, 'effort', 'Effort (model-dependent)', 'text'));
-      }
-      section.append(details);
-    }
-    return section;
-  }
-
   function render() {
     if (!state || !app) return;
     const focused = document.activeElement;
@@ -350,21 +395,29 @@
       renderBehaviorSection(),
       renderLimitsSection(),
       renderKeysSection(),
-      renderAdvancedSection(),
     );
     if (focusedKey) {
       const again =
-        app.querySelector(`[data-fkey="${focusedKey}"]`) ??
-        app.querySelector(`[data-key="${focusedKey}"]`);
+        app.querySelector(`[data-fkey="${CSS.escape(focusedKey)}"]`) ??
+        app.querySelector(`[data-key="${CSS.escape(focusedKey)}"]`);
       if (again) {
         again.focus();
-        if (focusedValue !== null && 'value' in again) {
+        // Em <select> só se restaura o foco, nunca o valor: o select recriado
+        // já vem com a seleção correta do estado, e reatribuir um valor
+        // capturado antes da re-renderização poderia exibir uma opção que o
+        // estado novo não tem mais (ex.: esforço do modelo anterior).
+        if (again.tagName !== 'SELECT' && focusedValue !== null && 'value' in again) {
           again.value = focusedValue;
           if (focusedSel && again.setSelectionRange) {
             again.setSelectionRange(focusedSel[0], focusedSel[1]);
           }
         }
       }
+    }
+    if (pendingFocus) {
+      const target = app.querySelector(`[data-fkey="${CSS.escape(pendingFocus)}"]`);
+      pendingFocus = null;
+      if (target) target.focus();
     }
   }
 
