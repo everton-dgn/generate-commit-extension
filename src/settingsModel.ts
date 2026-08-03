@@ -1,5 +1,3 @@
-import type { ProviderId } from './types';
-
 /** Interpreta uma configuração de inteiro positivo; undefined quando inválida ou abaixo do mínimo. */
 export function parseIntSetting(input: string, min: number): number | undefined {
   const value = Number(input.trim());
@@ -36,54 +34,6 @@ export const LANGUAGE_OPTIONS: readonly LanguageOption[] = [
   { code: 'ko', label: '한국어' },
   { code: 'ru', label: 'Русский' },
 ];
-
-export interface AdvancedItem {
-  readonly key: 'model' | 'baseUrl' | 'authHeader' | 'effort';
-  readonly label: string;
-  readonly kind: 'text' | 'enum';
-  readonly options?: readonly string[];
-}
-
-const TEXT_MODEL: AdvancedItem = { key: 'model', label: 'Model', kind: 'text' };
-const TEXT_BASE_URL: AdvancedItem = {
-  key: 'baseUrl',
-  label: 'Base URL (HTTPS only)',
-  kind: 'text',
-};
-
-/** Chaves avançadas editáveis por provider. */
-export function advancedItemsFor(id: ProviderId): AdvancedItem[] {
-  switch (id) {
-    case 'openrouter':
-    case 'kimi':
-    case 'glm':
-    case 'minimax':
-      return [TEXT_MODEL, TEXT_BASE_URL];
-    case 'anthropicCustom':
-      return [
-        TEXT_MODEL,
-        TEXT_BASE_URL,
-        {
-          key: 'authHeader',
-          label: 'Auth header style',
-          kind: 'enum',
-          options: ['x-api-key', 'bearer'],
-        },
-      ];
-    case 'claudeCli':
-      return [
-        TEXT_MODEL,
-        {
-          key: 'effort',
-          label: 'Effort',
-          kind: 'enum',
-          options: ['', 'low', 'medium', 'high', 'xhigh', 'max'],
-        },
-      ];
-    case 'codexCli':
-      return [TEXT_MODEL, { key: 'effort', label: 'Effort (model-dependent)', kind: 'text' }];
-  }
-}
 
 // ---------- validação de mensagens do painel de configurações ----------
 
@@ -213,6 +163,37 @@ export function buildModelOptions(
     if (model !== CUSTOM_MODEL_VALUE) options.push({ value: model, label: model });
   }
   options.push({ value: CUSTOM_MODEL_VALUE, label: 'Custom…' });
+  return { options, selected: current };
+}
+
+/**
+ * Níveis de esforço do Claude Code CLI, verificados contra `claude --help`
+ * (Claude Code 2.1.220) em 2026-08-02.
+ */
+export const CLAUDE_CLI_EFFORT_LEVELS: readonly string[] = [
+  'low',
+  'medium',
+  'high',
+  'xhigh',
+  'max',
+];
+
+/**
+ * Opções do dropdown de esforço: primeiro a opção vazia de padrão do CLI,
+ * o valor atual quando não está na lista (para um nível desconhecido nunca
+ * sumir de repente) e cada nível suportado.
+ */
+export function buildEffortOptions(
+  levels: readonly string[],
+  current: string,
+): { options: ModelOption[]; selected: string } {
+  const options: ModelOption[] = [{ value: '', label: '(CLI default)' }];
+  if (current && !levels.includes(current)) {
+    options.push({ value: current, label: `${current} (current)` });
+  }
+  for (const level of levels) {
+    options.push({ value: level, label: level });
+  }
   return { options, selected: current };
 }
 

@@ -66,6 +66,30 @@
     return input;
   }
 
+  // Seta customizada em SVG inline criada via DOM: a CSP bloqueia imagens
+  // (img-src 'none'), então background-image/data URI não funcionariam.
+  function selectArrow() {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('class', 'select-arrow');
+    svg.setAttribute('viewBox', '0 0 16 16');
+    svg.setAttribute('aria-hidden', 'true');
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', 'M4 6l4 4 4-4');
+    path.setAttribute('fill', 'none');
+    path.setAttribute('stroke', 'currentColor');
+    path.setAttribute('stroke-width', '1.5');
+    path.setAttribute('stroke-linecap', 'round');
+    path.setAttribute('stroke-linejoin', 'round');
+    svg.append(path);
+    return svg;
+  }
+
+  function wrapSelect(select) {
+    const wrap = el('span', 'select-wrap');
+    wrap.append(select, selectArrow());
+    return wrap;
+  }
+
   function selectInput(key, value, options) {
     const select = el('select', 'control');
     select.dataset.key = key;
@@ -76,7 +100,7 @@
       select.append(option);
     }
     select.addEventListener('change', () => sendUpdate(key, select.value));
-    return select;
+    return wrapSelect(select);
   }
 
   function checkboxInput(key, value, labelText) {
@@ -159,7 +183,7 @@
       }
       sendUpdate(key, select.value);
     });
-    return select;
+    return wrapSelect(select);
   }
 
   function renderProviderSection() {
@@ -171,27 +195,90 @@
     if (active) {
       const control = modelControl(active, `${active.id}.model`, 'main', `main:${active.id}.model`);
       section.append(field('Model', control, active.availabilityNote));
+      if (active.kind === 'cli') {
+        const effortOptions = active.effortOptions.map((o) => [o.value, o.label]);
+        section.append(
+          field('Effort', selectInput(`${active.id}.effort`, active.effortSelected, effortOptions)),
+        );
+      } else {
+        section.append(
+          field('Base URL (HTTPS only)', textInput(`${active.id}.baseUrl`, active.baseUrl)),
+        );
+        if (active.id === 'anthropicCustom') {
+          section.append(
+            field(
+              'Auth header style',
+              selectInput(`${active.id}.authHeader`, active.authHeader, [
+                ['x-api-key', 'x-api-key'],
+                ['bearer', 'bearer'],
+              ]),
+            ),
+          );
+        }
+      }
     }
     return section;
+  }
+
+  // O modo de texto livre do idioma compartilha o mapa customMode do modelo:
+  // ambos são indexados pela chave de configuração.
+  function languageControl() {
+    const key = 'language';
+    if (customMode[key]) {
+      const input = textInput(key, state.language, 'en, pt-BR, ...');
+      input.dataset.fkey = 'main:language';
+      const wrap = el('span', 'model-control');
+      wrap.append(input);
+      const back = el('button', 'link-btn', 'Choose from list');
+      back.type = 'button';
+      back.title = 'Show the language list';
+      back.addEventListener('click', () => {
+        delete customMode[key];
+        render();
+      });
+      wrap.append(back);
+      return wrap;
+    }
+    const select = el('select', 'control');
+    select.dataset.key = key;
+    select.dataset.fkey = 'main:language';
+    const known = state.languages.some((l) => l.code === state.language);
+    if (state.language && !known) {
+      const opt = el('option', '', `${state.language} (current)`);
+      opt.value = state.language;
+      opt.selected = true;
+      select.append(opt);
+    }
+    for (const lang of state.languages) {
+      const opt = el('option', '', `${lang.label} (${lang.code})`);
+      opt.value = lang.code;
+      if (lang.code === state.language) opt.selected = true;
+      select.append(opt);
+    }
+    const custom = el('option', '', 'Custom…');
+    custom.value = state.customModelValue;
+    select.append(custom);
+    select.addEventListener('change', () => {
+      if (select.value === state.customModelValue) {
+        customMode[key] = true;
+        // Tira o foco antes de re-renderizar: caso contrário, a restauração de
+        // foco inseriria o valor sentinela no novo input de texto livre.
+        select.blur();
+        render();
+        return;
+      }
+      sendUpdate(key, select.value);
+    });
+    return wrapSelect(select);
   }
 
   function renderBehaviorSection() {
     const section = el('section');
     section.append(el('h2', '', 'Behavior'));
 
-    const langInput = textInput('language', state.language, 'en, pt-BR, ...');
-    langInput.setAttribute('list', 'gc-languages');
-    const datalist = el('datalist');
-    datalist.id = 'gc-languages';
-    for (const lang of state.languages) {
-      const option = el('option');
-      option.value = lang.code;
-      option.label = lang.label;
-      datalist.append(option);
-    }
-    const langField = field('Message language', langInput, 'Conventional Commits in this language');
-    langField.append(datalist);
-    section.append(langField);
+    section.append(
+      field('Message language', languageControl(), 'Conventional Commits in this language'),
+    );
 
     section.append(
       field(
@@ -269,72 +356,6 @@
     return section;
   }
 
-  function advancedControl(provider, key, label, kind, options) {
-    const fullKey = `${provider.id}.${key}`;
-    const current =
-      key === 'model'
-        ? provider.model
-        : key === 'baseUrl'
-          ? provider.baseUrl
-          : key === 'authHeader'
-            ? provider.authHeader
-            : provider.effort;
-    if (kind === 'enum') {
-      const opts = options.map((o) => [o, o === '' ? '(provider default)' : o]);
-      return field(label, selectInput(fullKey, current, opts));
-    }
-    if (key === 'model') {
-      // Identidade de foco distinta: o campo de modelo principal deste provider
-      // usa a mesma chave de configuração, então o controle avançado precisa do seu próprio fkey.
-      return field(label, modelControl(provider, fullKey, `${provider.id}-adv`, `adv:${fullKey}`));
-    }
-    return field(label, textInput(fullKey, current));
-  }
-
-  function renderAdvancedSection() {
-    const section = el('section');
-    section.append(el('h2', '', 'Advanced per provider'));
-    for (const provider of state.providers) {
-      const details = el('details');
-      const summary = el('summary');
-      summary.append(
-        el('span', '', provider.label),
-        el('span', 'hint-inline', ` ${provider.model || 'provider default'}`),
-      );
-      details.append(summary);
-      details.append(el('p', 'hint', provider.availabilityNote));
-      details.append(advancedControl(provider, 'model', 'Model', 'text'));
-      if (provider.kind === 'http') {
-        details.append(advancedControl(provider, 'baseUrl', 'Base URL (HTTPS only)', 'text'));
-      }
-      if (provider.id === 'anthropicCustom') {
-        details.append(
-          advancedControl(provider, 'authHeader', 'Auth header style', 'enum', [
-            'x-api-key',
-            'bearer',
-          ]),
-        );
-      }
-      if (provider.id === 'claudeCli') {
-        details.append(
-          advancedControl(provider, 'effort', 'Effort', 'enum', [
-            '',
-            'low',
-            'medium',
-            'high',
-            'xhigh',
-            'max',
-          ]),
-        );
-      }
-      if (provider.id === 'codexCli') {
-        details.append(advancedControl(provider, 'effort', 'Effort (model-dependent)', 'text'));
-      }
-      section.append(details);
-    }
-    return section;
-  }
-
   function render() {
     if (!state || !app) return;
     const focused = document.activeElement;
@@ -350,7 +371,6 @@
       renderBehaviorSection(),
       renderLimitsSection(),
       renderKeysSection(),
-      renderAdvancedSection(),
     );
     if (focusedKey) {
       const again =
