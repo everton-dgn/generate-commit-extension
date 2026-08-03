@@ -84,9 +84,62 @@ textarea.control {
 .checkbox-row {
   display: flex;
   align-items: center;
+  gap: 8px;
   margin: 10px 0;
   cursor: pointer;
   font-size: 0.95em;
+}
+
+/* Switch em CSS puro sobre o checkbox nativo: o input vira o trilho e o
+   ::before vira o polegar. O elemento continua checkbox (acessibilidade,
+   foco e a lógica de checked intactos); zero JS e zero imagens, então a CSP
+   segue intacta. */
+.checkbox-row input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  position: relative;
+  flex-shrink: 0;
+  width: 32px;
+  height: 18px;
+  margin: 0;
+  border-radius: 999px;
+  border: 1px solid var(--vscode-input-border, transparent);
+  background: var(--vscode-input-background);
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.checkbox-row input[type="checkbox"]::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 2px;
+  transform: translateY(-50%);
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--vscode-input-foreground);
+  transition: left 0.15s ease;
+}
+
+.checkbox-row input[type="checkbox"]:checked {
+  background: var(--vscode-button-background);
+  border-color: var(--vscode-button-background);
+}
+
+.checkbox-row input[type="checkbox"]:checked::before {
+  left: 16px;
+  background: var(--vscode-button-foreground);
+}
+
+.checkbox-row input[type="checkbox"]:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: 1px;
+}
+
+.checkbox-row input[type="checkbox"]:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 button {
