@@ -97,13 +97,16 @@ textarea.control {
 .checkbox-row input[type="checkbox"] {
   appearance: none;
   -webkit-appearance: none;
+  -moz-appearance: none;
   position: relative;
   flex-shrink: 0;
   width: 32px;
   height: 18px;
   margin: 0;
   border-radius: 999px;
-  border: 1px solid var(--vscode-input-border, transparent);
+  /* Em temas claros input-background costuma ser igual ao fundo do painel e
+     input-border indefinido: sem o fallback o trilho desligado some. */
+  border: 1px solid var(--vscode-input-border, var(--vscode-descriptionForeground));
   background: var(--vscode-input-background);
   cursor: pointer;
   transition: background-color 0.15s ease;
@@ -127,6 +130,9 @@ textarea.control {
   border-color: var(--vscode-button-background);
 }
 
+/* Inputs usam border-box: o trilho de 32px tem padding box de 30px (borda
+   1px de cada lado). Polegar de 12px em left: 16px => recuos de 3px dos dois
+   lados (medido no Chromium em 2026-08-02). */
 .checkbox-row input[type="checkbox"]:checked::before {
   left: 16px;
   background: var(--vscode-button-foreground);
@@ -140,6 +146,13 @@ textarea.control {
 .checkbox-row input[type="checkbox"]:disabled {
   opacity: 0.5;
   cursor: default;
+}
+
+/* O :checked acima tem especificidade maior que .invalid-flash sozinho:
+   sem repetir o seletor, o flash de erro nunca aparece em switch ligado. */
+.checkbox-row input[type="checkbox"].invalid-flash,
+.checkbox-row input[type="checkbox"].invalid-flash:checked {
+  border-color: var(--vscode-inputValidation-errorBorder, #f14c4c);
 }
 
 button {
