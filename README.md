@@ -128,6 +128,7 @@ Settings do editor (filtre por `generateCommit`).
 | `generateCommit.maxDiffChars` | `50000` | Teto de caracteres do diff enviado; trunca na fronteira de arquivo e sinaliza no prompt. |
 | `generateCommit.maxFileSizeKB` | `50` | Arquivos cujo chunk de diff excede este tamanho são excluídos. |
 | `generateCommit.includeRecentCommits` | `true` | Envia os 10 commits recentes como referência de estilo. |
+| `generateCommit.disableThinking` | `false` | Desliga o raciocínio nos providers CLI para menor latência: Codex roda com `model_reasoning_effort="none"` e o Claude CLI com `MAX_THINKING_TOKENS=0` (verificado em 2026-08-02). A setting Effort é ignorada enquanto ligado. |
 | `generateCommit.customPrompt` | `""` | Instruções extras anexadas ao system prompt. |
 | `generateCommit.unstagedFallback` | `ask` | Sem diff staged: perguntar, sempre usar unstaged ou nunca. |
 | `generateCommit.timeoutSeconds` | `60` | Timeout de requests HTTP e execuções de CLI. |

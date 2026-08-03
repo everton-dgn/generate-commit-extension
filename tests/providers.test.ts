@@ -144,7 +144,7 @@ describe('mapHttpError', () => {
 
 describe('buildClaudeArgs', () => {
   it('uses headless safe defaults', () => {
-    const args = buildClaudeArgs({ model: '', effort: '' });
+    const args = buildClaudeArgs({ model: '', effort: '', disableThinking: false });
     expect(args).toEqual([
       '-p',
       '--tools',
@@ -156,17 +156,22 @@ describe('buildClaudeArgs', () => {
   });
 
   it('appends model and effort only when set', () => {
-    const args = buildClaudeArgs({ model: 'sonnet', effort: 'low' });
+    const args = buildClaudeArgs({ model: 'sonnet', effort: 'low', disableThinking: false });
     expect(args).toContain('--model');
     expect(args).toContain('sonnet');
     expect(args).toContain('--effort');
     expect(args).toContain('low');
   });
+
+  it('omits --effort when thinking is disabled', () => {
+    const args = buildClaudeArgs({ model: '', effort: 'low', disableThinking: true });
+    expect(args).not.toContain('--effort');
+  });
 });
 
 describe('buildCodexArgs', () => {
   it('uses non-interactive read-only defaults with an output file', () => {
-    const args = buildCodexArgs({ model: '', effort: '' }, '/tmp/out.md');
+    const args = buildCodexArgs({ model: '', effort: '', disableThinking: false }, '/tmp/out.md');
     expect(args).toContain('exec');
     expect(args).toContain('read-only');
     expect(args).toContain('--skip-git-repo-check');
@@ -175,15 +180,32 @@ describe('buildCodexArgs', () => {
   });
 
   it('pins the approval policy through the config key (flag removed in 0.146.0)', () => {
-    const args = buildCodexArgs({ model: '', effort: '' }, '/tmp/out.md');
+    const args = buildCodexArgs({ model: '', effort: '', disableThinking: false }, '/tmp/out.md');
     const idx = args.indexOf('--config');
     expect(args[idx + 1]).toBe('approval_policy="never"');
     expect(args).not.toContain('--ask-for-approval');
   });
 
   it('passes effort through the documented config key', () => {
-    const args = buildCodexArgs({ model: 'gpt-x', effort: 'high' }, '/tmp/out.md');
+    const args = buildCodexArgs(
+      { model: 'gpt-x', effort: 'high', disableThinking: false },
+      '/tmp/out.md',
+    );
     expect(args).toContain('model_reasoning_effort="high"');
     expect(args).toContain('gpt-x');
+  });
+
+  it('forces effort none when thinking is disabled, overriding the setting', () => {
+    const args = buildCodexArgs(
+      { model: '', effort: 'high', disableThinking: true },
+      '/tmp/out.md',
+    );
+    expect(args).toContain('model_reasoning_effort="none"');
+    expect(args).not.toContain('model_reasoning_effort="high"');
+  });
+
+  it('still passes none when thinking is disabled and effort is empty', () => {
+    const args = buildCodexArgs({ model: '', effort: '', disableThinking: true }, '/tmp/out.md');
+    expect(args).toContain('model_reasoning_effort="none"');
   });
 });

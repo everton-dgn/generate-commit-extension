@@ -74,6 +74,30 @@
     return input;
   }
 
+  // Textarea multilinha com o mesmo debounce do textInput; redimensionável
+  // verticalmente via CSS.
+  function textareaInput(key, value, placeholder, rows) {
+    const input = el('textarea', 'control');
+    input.value = value || '';
+    input.placeholder = placeholder || '';
+    input.rows = rows || 3;
+    input.dataset.key = key;
+    input.spellcheck = false;
+    let timer = null;
+    input.addEventListener('input', () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => sendUpdate(key, input.value), 350);
+    });
+    input.addEventListener('change', () => {
+      if (timer) {
+        clearTimeout(timer);
+        timer = null;
+      }
+      sendUpdate(key, input.value);
+    });
+    return input;
+  }
+
   // Seta customizada em SVG inline criada via DOM: a CSP bloqueia imagens
   // (img-src 'none'), então background-image/data URI não funcionariam.
   function selectArrow() {
@@ -215,13 +239,20 @@
         const currentOpt = active.effortOptions.find((o) => o.value === active.effortSelected);
         const unsupported =
           active.effortSelected !== '' && currentOpt && currentOpt.label.endsWith('(current)');
-        section.append(
-          field(
-            'Effort',
-            selectInput(`${active.id}.effort`, active.effortSelected, effortOptions),
-            unsupported ? 'not supported by the selected model' : undefined,
-          ),
+        const effortField = field(
+          'Effort',
+          selectInput(`${active.id}.effort`, active.effortSelected, effortOptions),
+          state.disableThinking
+            ? 'ignored while thinking is disabled'
+            : unsupported
+              ? 'not supported by the selected model'
+              : undefined,
         );
+        if (state.disableThinking) {
+          const select = effortField.querySelector('select');
+          if (select) select.disabled = true;
+        }
+        section.append(effortField);
       } else {
         section.append(
           field('Base URL (HTTPS only)', textInput(`${active.id}.baseUrl`, active.baseUrl)),
@@ -322,9 +353,16 @@
       ),
     );
     section.append(
+      checkboxInput(
+        'disableThinking',
+        state.disableThinking,
+        'Disable thinking on CLI providers (faster, less reasoning)',
+      ),
+    );
+    section.append(
       field(
         'Custom prompt instructions',
-        textInput('customPrompt', state.customPrompt, 'empty'),
+        textareaInput('customPrompt', state.customPrompt, 'empty', 3),
         'Appended to the system prompt',
       ),
     );
@@ -485,7 +523,12 @@
     if (ok || !app) return;
     const input = app.querySelector(`[data-key="${key}"]`);
     if (input && 'value' in input) {
-      input.value = stateValueFor(key);
+      // Em checkbox o estado visual é o checked, não o value.
+      if (input.type === 'checkbox') {
+        input.checked = stateValueFor(key) === true;
+      } else {
+        input.value = stateValueFor(key);
+      }
       input.classList.add('invalid-flash');
       setTimeout(() => input.classList.remove('invalid-flash'), 2000);
     }

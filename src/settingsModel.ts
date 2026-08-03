@@ -60,6 +60,7 @@ export const PANEL_SETTINGS: Readonly<Record<string, SettingSpec>> = {
   maxDiffChars: { kind: 'integer', min: 1000 },
   maxFileSizeKB: { kind: 'integer', min: 1 },
   includeRecentCommits: { kind: 'boolean' },
+  disableThinking: { kind: 'boolean' },
   customPrompt: { kind: 'string' },
   unstagedFallback: { kind: 'enum', options: ['ask', 'always', 'never'] },
   timeoutSeconds: { kind: 'integer', min: 5 },

@@ -17,6 +17,8 @@ export interface RunCliOptions {
   readonly timeoutMs: number;
   readonly signal: AbortSignal;
   readonly envRemove?: readonly string[];
+  /** Variáveis extras mescladas ao ambiente do filho (ex.: MAX_THINKING_TOKENS=0). */
+  readonly env?: Readonly<Record<string, string>>;
 }
 
 const MAX_STDOUT_CHARS = 2_000_000;
@@ -31,6 +33,8 @@ const MAX_STDERR_CHARS = 200_000;
 export async function runCli(opts: RunCliOptions): Promise<CliResult> {
   return new Promise((resolve, reject) => {
     const env = { ...process.env };
+    Object.assign(env, opts.env);
+    // A remoção vem por último: uma chave presente nas duas listas é removida.
     for (const key of opts.envRemove ?? []) delete env[key];
     const detached = process.platform !== 'win32';
     const child = spawn(opts.bin, [...opts.args], {

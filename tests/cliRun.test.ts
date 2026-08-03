@@ -86,4 +86,16 @@ describe('runCli', () => {
       runCli({ ...opts, bin: '/nonexistent/binary-xyz', args: [], stdin: '' }),
     ).rejects.toMatchObject({ kind: 'cli' });
   });
+
+  it('merges extra env vars and honors envRemove', async () => {
+    const result = await runCli({
+      ...opts,
+      args: ['-e', 'console.log(process.env.GC_TEST_SET + "|" + process.env.GC_TEST_REMOVED)'],
+      stdin: '',
+      env: { GC_TEST_SET: 'yes', GC_TEST_REMOVED: 'present' },
+      envRemove: ['GC_TEST_REMOVED'],
+    });
+    expect(result.code).toBe(0);
+    expect(result.stdout.trim()).toBe('yes|undefined');
+  });
 });
