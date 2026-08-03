@@ -1,29 +1,29 @@
 ---
-name: Reportar bug
-about: Algo não funciona como esperado
+name: Bug report
+about: Something does not work as expected
 title: "fix: "
 labels: bug
 ---
 
-**Descreva o bug**
+**Describe the bug**
 
-<!-- O que aconteceu e o que você esperava que acontecesse. -->
+<!-- What happened and what you expected to happen. -->
 
-**Como reproduzir**
+**How to reproduce**
 
 1.
 2.
 3.
 
-**Ambiente**
+**Environment**
 
-- Editor (VS Code ou VSCodium) e versão:
-- Sistema operacional:
-- Provider usado (claudeCli, codexCli, openrouter, ...):
-- Versão da extensão:
+- Editor (VS Code or VSCodium) and version:
+- Operating system:
+- Provider used (claudeCli, codexCli, openrouter, ...):
+- Extension version:
 
 **Logs**
 
-<!-- Output > Generate Commit. O log só contém metadados; mesmo assim,
-     confira antes de colar. NUNCA inclua chaves de API, diffs ou
-     respostas de providers. -->
+<!-- Output > Generate Commit. The log only contains metadata; even so,
+     check it before pasting. NEVER include API keys, diffs or provider
+     responses. -->

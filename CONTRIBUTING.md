@@ -1,34 +1,34 @@
-# Contribuindo
+# Contributing
 
-Toda contribuição é bem-vinda: correções, funcionalidades, documentação e
-relatos de bug. Este guia cobre o fluxo completo, do ambiente ao PR.
+Every contribution is welcome: fixes, features, documentation and bug
+reports. This guide covers the full flow, from environment setup to the PR.
 
-## Preparar o ambiente
+## Setting up the environment
 
-Requisitos: Node.js LTS e pnpm 11. A versão do pnpm está fixada no campo
-`packageManager` do `package.json`; com o Corepack habilitado, ela é usada
-automaticamente:
+Requirements: Node.js LTS and pnpm 11. The pnpm version is pinned in the
+`packageManager` field of `package.json`; with Corepack enabled, it is used
+automatically:
 
 ```bash
 corepack enable
 pnpm install
 ```
 
-## Desenvolver
+## Developing
 
 ```bash
-pnpm watch   # bundle em dist/ com watch
-# F5 no VS Code: abre o Extension Development Host
+pnpm watch   # bundle into dist/ with watch
+# F5 in VS Code: opens the Extension Development Host
 ```
 
-A arquitetura da extensão (providers, fluxo de geração, painel de
-configurações) está documentada em [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
-Um provider novo é uma implementação da interface `Provider` em
-`src/providers/`, registrada em `src/providers/registry.ts`.
+The extension's architecture (providers, generation flow, settings panel)
+is documented in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). A new
+provider is one implementation of the `Provider` interface in
+`src/providers/`, registered in `src/providers/registry.ts`.
 
-## Antes de abrir o PR
+## Before opening the PR
 
-Rode localmente o mesmo que o CI executa:
+Run locally the same steps the CI runs:
 
 ```bash
 pnpm typecheck   # tsc --noEmit
@@ -37,14 +37,14 @@ pnpm test        # vitest run
 pnpm build       # esbuild
 ```
 
-Comportamento novo pede teste novo em `tests/` (Vitest). Se a mudança alterar
-settings, providers ou fluxos visíveis, atualize o `README.md` e o
-`CHANGELOG.md` na mesma PR.
+New behavior calls for new tests in `tests/` (Vitest). If the change
+affects settings, providers or user-visible flows, update `README.md` and
+`CHANGELOG.md` in the same PR.
 
 ## Commits
 
-Seguimos [Conventional Commits](https://www.conventionalcommits.org/pt-br/),
-em inglês e com escopo pequeno (commits atômicos):
+We follow [Conventional Commits](https://www.conventionalcommits.org/en/),
+in English and with a small scope (atomic commits):
 
 ```text
 feat: add kimi coding endpoint preset
@@ -52,24 +52,25 @@ fix: abort cli process group on cancel
 docs: document machine-scoped settings
 ```
 
-Tipos comuns: `feat`, `fix`, `docs`, `chore`, `ci`, `refactor`, `test`.
+Common types: `feat`, `fix`, `docs`, `chore`, `ci`, `refactor`, `test`.
 
-## Abrir o PR
+## Opening the PR
 
-1. Faça fork do repositório e crie uma branch a partir de `main`
-   (`feat/...`, `fix/...`, `docs/...`).
-2. Abra o PR contra `main` preenchendo o template.
-3. O CI precisa estar verde antes do merge.
+1. Fork the repository and create a branch from `main` (`feat/...`,
+   `fix/...`, `docs/...`).
+2. Open the PR against `main`, filling in the template.
+3. CI must be green before merging.
 
-## Reportar bugs e vulnerabilidades
+## Reporting bugs and vulnerabilities
 
-Bugs: abra uma issue usando o template de bug, com passos de reprodução e
-ambiente. Nunca cole chaves de API, diffs ou respostas de providers na issue.
+Bugs: open an issue using the bug template, with reproduction steps and
+environment. Never paste API keys, diffs or provider responses into the
+issue.
 
-Vulnerabilidades de segurança: **não** abra issue pública. Siga o processo
-descrito em [SECURITY.md](SECURITY.md).
+Security vulnerabilities: do **not** open a public issue. Follow the
+process described in [SECURITY.md](SECURITY.md).
 
-## Código de conduta
+## Code of conduct
 
-Ao participar, você concorda com o
+By participating, you agree to the
 [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).

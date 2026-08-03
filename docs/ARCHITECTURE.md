@@ -1,88 +1,89 @@
-# Arquitetura
+# Architecture
 
-Este documento descreve como a extensão é organizada por dentro: o fluxo de
-ativação, o fluxo de geração de mensagens, a arquitetura plugável de
-providers e as decisões estruturais. Para o modelo de segurança, veja
-`SECURITY.md` na raiz.
+This document describes how the extension is organized on the inside: the
+activation flow, the message generation flow, the pluggable provider
+architecture and the structural decisions. For the threat model, see
+`SECURITY.md` at the root.
 
-## Visão geral dos módulos
+## Module overview
 
-| Arquivo | Papel |
-|---------|-------|
-| `src/extension.ts` | Ativação: Output Channel, comandos e o painel de settings (WebviewView). |
-| `src/commands.ts` | Comando `generate` e o orquestrador do fluxo de geração; ações de erro abrem o painel. |
-| `src/git.ts` | Acesso à extensão Git built-in (`vscode.git` API v1), resolução multi-repo, diffs e log recente. |
-| `src/config.ts` | Leitura e validação das settings (`generateCommit.*`) e chaves do SecretStorage. |
-| `src/providers/` | Interface única + implementações (detalhes abaixo). |
-| `src/prompt.ts` | Montagem de system/user prompt e normalização da saída do modelo (puras). |
-| `src/diffFilter.ts` | Split do diff por arquivo, exclusões (lockfile, binário, minificado, grande) e truncamento (puras). |
-| `src/secretsScan.ts` | Padrões de segredos, varredura do diff e redação de texto (puras). |
-| `src/cliDetect.ts` | Resolução de binários de CLI (PATH, shell de login, caminhos comuns). |
-| `src/cliRun.ts` | Execução de CLI com stdin, timeout, cancelamento por grupo de processos e classificação de erros. |
-| `src/http.ts` | POST JSON somente HTTPS com timeout, cancelamento e mapeamento de erros HTTP. |
-| `src/log.ts` | Log somente de metadados, com redação defensiva de segredos. |
-| `src/settingsModel.ts` | Modelo puro do painel: whitelist de chaves, validação de valores e helpers. |
-| `src/settingsPanel.ts` | WebviewView do painel de configurações (formulário inline na sidebar). |
-| `src/modelCatalog.ts` | Catálogo de modelos HTTP: busca `/models` de cada provider, cache com TTL e parser tolerante de formatos. |
-| `src/cliCatalog.ts` | Catálogo do Codex CLI: lê `codex debug models` (modelos + níveis de reasoning por modelo), cache com TTL e fallback estático. |
-| `src/providersRuntime.ts` | Factories dos providers, disponibilidade, status de chaves e validação de chave. |
-| `media/` | JS/CSS do painel (os únicos recursos que a CSP da webview permite). |
-| `src/typings/git.d.ts` | Tipagens oficiais da Git API, vendorizadas da tag 1.126.0 do `microsoft/vscode`. |
+| File | Role |
+|------|------|
+| `src/extension.ts` | Activation: Output Channel, commands and the settings panel (WebviewView). |
+| `src/commands.ts` | The `generate` command and the generation flow orchestrator; error actions open the panel. |
+| `src/git.ts` | Access to the built-in Git extension (`vscode.git` API v1), multi-repo resolution, diffs and recent log. |
+| `src/config.ts` | Reading and validating settings (`generateCommit.*`) and SecretStorage keys. |
+| `src/providers/` | Single interface + implementations (details below). |
+| `src/prompt.ts` | System/user prompt assembly and model output normalization (pure). |
+| `src/diffFilter.ts` | Per-file diff splitting, exclusions (lockfile, binary, minified, large) and truncation (pure). |
+| `src/secretsScan.ts` | Secret patterns, diff scanning and text redaction (pure). |
+| `src/cliDetect.ts` | CLI binary resolution (PATH, login shell, common paths). |
+| `src/cliRun.ts` | CLI execution with stdin, timeout, process-group cancellation and error classification. |
+| `src/http.ts` | HTTPS-only JSON POST with timeout, cancellation and HTTP error mapping. |
+| `src/log.ts` | Metadata-only logging, with defensive secret redaction. |
+| `src/settingsModel.ts` | Pure panel model: key whitelist, value validation and helpers. |
+| `src/settingsPanel.ts` | Settings panel WebviewView (inline form in the sidebar). |
+| `src/modelCatalog.ts` | HTTP model catalog: fetches `/models` from each provider, TTL cache and a format-tolerant parser. |
+| `src/cliCatalog.ts` | Codex CLI catalog: reads `codex debug models` (models + per-model reasoning levels), TTL cache and static fallback. |
+| `src/providersRuntime.ts` | Provider factories, availability, key status and key validation. |
+| `media/` | Panel JS/CSS (the only resources the webview CSP allows). |
+| `src/typings/git.d.ts` | Official Git API typings, vendored from the `microsoft/vscode` 1.126.0 tag. |
 
-## Fluxo de ativação
+## Activation flow
 
-1. `activate()` cria o Output Channel "Generate Commit".
-2. Registra os comandos (`generateCommit.generate` e `.settings`, que foca
-   o painel).
-3. Registra o `SettingsPanelProvider` na view `generateCommit.settingsView`
-   (painel da Activity Bar), uma WebviewView sandboxed que hospeda o
-   formulário de configurações.
+1. `activate()` creates the "Generate Commit" Output Channel.
+2. Registers the commands (`generateCommit.generate` and `.settings`, which
+   focuses the panel).
+3. Registers the `SettingsPanelProvider` in the `generateCommit.settingsView`
+   view (Activity Bar panel), a sandboxed WebviewView hosting the settings
+   form.
 
-A ativação é preguiça de verdade: `activationEvents` está vazio porque o VS
-Code ativa a extensão automaticamente quando qualquer comando contribuído é
-invocado (comportamento desde 1.74). Nada roda em segundo plano e não há
-telemetria.
+Activation is truly lazy: `activationEvents` is empty because VS Code
+activates the extension automatically when any contributed command is
+invoked (behavior since 1.74). Nothing runs in the background and there is
+no telemetry.
 
-## Fluxo de geração (`generateCommit.generate`)
+## Generation flow (`generateCommit.generate`)
 
-1. **Repositório**: o argumento do comando traz `rootUri` (menu
-   `scm/inputBox`); pela Command Palette, sem argumento. Resolve via
-   `api.getRepository(uri)`; com um único repo, usa direto; ambíguo, abre
-   QuickPick.
-2. **Diff**: `repo.diff(true)` (staged). Vazio → setting
-   `unstagedFallback` (`ask`/`always`/`never`) decide se usa
-   `repo.diff(false)`. Falha (HEAD unborn) → mensagem orientando o commit
-   inicial.
-3. **Filtro**: split por arquivo e exclusão de lockfiles, binários,
-   minificados e chunks acima de `maxFileSizeKB` (medido em bytes UTF-8).
-   Tudo excluído → informa e aborta.
-4. **Varredura de segredos**: `scanDiff` sobre os arquivos mantidos. Com
-   achados, modal lista arquivo + tipo (nunca o valor) e exige "Send
-   Anyway" explícito para prosseguir.
-5. **Truncamento**: `maxDiffChars` cortado na fronteira de arquivo, com
-   marcação explícita no prompt quando trunca.
-6. **Prompt**: system (Conventional Commits + idioma + instruções
-   customizadas) e user (commits recentes como referência de estilo, aviso
-   de truncamento, diff).
-7. **Provider**: lê a disponibilidade de todos em paralelo
-   (`Promise.all`), escolhe o configurado se disponível, senão o primeiro
-   disponível na ordem do registry (CLIs primeiro). Nenhum disponível →
-   oferece o fluxo guiado de configuração.
-8. **Geração**: `withProgress` cancelável; o token aborta o
-   `AbortController`, que cancela o fetch HTTP ou mata o grupo de
-   processos do CLI.
-9. **Escrita**: guarda de geração por repositório (iniciar outra aborta a
-   anterior; só a mais recente escreve). Se o diff era staged, ele é
-   relido e comparado antes de escrever; se mudou, o resultado é
-   descartado. A mensagem final passa por `parseModelOutput` (extrai bloco
-   de código, remove rótulos e aspas) e vai para `repository.inputBox.value`.
+1. **Repository**: the command argument carries `rootUri` (`scm/inputBox`
+   menu); from the Command Palette, no argument. Resolves via
+   `api.getRepository(uri)`; with a single repo, uses it directly; when
+   ambiguous, opens a QuickPick.
+2. **Diff**: `repo.diff(true)` (staged). Empty → the `unstagedFallback`
+   setting (`ask`/`always`/`never`) decides whether to use
+   `repo.diff(false)`. Failure (unborn HEAD) → message guiding the initial
+   commit.
+3. **Filter**: per-file split and exclusion of lockfiles, binaries,
+   minified files and chunks above `maxFileSizeKB` (measured in UTF-8
+   bytes). Everything excluded → informs and aborts.
+4. **Secret scanning**: `scanDiff` over the kept files. With findings, a
+   modal lists file + type (never the value) and requires an explicit
+   "Send Anyway" to proceed.
+5. **Truncation**: `maxDiffChars` cut at file boundaries, with an explicit
+   marker in the prompt when it truncates.
+6. **Prompt**: system (Conventional Commits + language + custom
+   instructions) and user (recent commits as style reference, truncation
+   notice, diff).
+7. **Provider**: reads the availability of all of them in parallel
+   (`Promise.all`), picks the configured one if available, otherwise the
+   first available in registry order (CLIs first). None available → offers
+   the guided setup flow.
+8. **Generation**: cancellable `withProgress`; the token aborts the
+   `AbortController`, which cancels the HTTP fetch or kills the CLI
+   process group.
+9. **Writing**: per-repository generation guard (starting another aborts
+   the previous one; only the latest writes). If the diff was staged, it is
+   re-read and compared before writing; if it changed, the result is
+   discarded. The final message goes through `parseModelOutput` (extracts
+   the code block, strips labels and quotes) and into
+   `repository.inputBox.value`.
 
-A extensão **nunca** executa commit. A única escrita é no input box, para
-revisão humana.
+The extension **never** runs a commit. The only write is to the input box,
+for human review.
 
-## Arquitetura de providers
+## Provider architecture
 
-Interface única (`src/types.ts`):
+Single interface (`src/types.ts`):
 
 ```ts
 interface Provider {
@@ -94,42 +95,42 @@ interface Provider {
 }
 ```
 
-- `src/providers/registry.ts` — metadados, ordem de exibição/fallback e a
-  escolha do provider (`resolveProviderChoice`, pura e testada).
-- `src/providers/openrouter.ts` — cliente OpenAI-compatible
+- `src/providers/registry.ts` — metadata, display/fallback order and
+  provider choice (`resolveProviderChoice`, pure and tested).
+- `src/providers/openrouter.ts` — OpenAI-compatible client
   (`/chat/completions`).
-- `src/providers/anthropic.ts` — cliente genérico da Messages API
-  (`<baseUrl>/v1/messages`), usado pelos presets Kimi, GLM, MiniMax e pelo
-  endpoint custom (auth `x-api-key` ou `bearer` por preset/setting).
-- `src/providers/claudeCli.ts` / `codexCli.ts` — CLIs detectados no PATH
-  (com cache de sessão), prompt via stdin, sem necessidade de chave.
+- `src/providers/anthropic.ts` — generic Messages API client
+  (`<baseUrl>/v1/messages`), used by the Kimi, GLM and MiniMax presets and
+  by the custom endpoint (`x-api-key` or `bearer` auth per preset/setting).
+- `src/providers/claudeCli.ts` / `codexCli.ts` — CLIs detected on PATH
+  (with session cache), prompt via stdin, no key needed.
 
-`ProviderError` carrega um `kind` (`auth`, `billing`, `rateLimit`,
+`ProviderError` carries a `kind` (`auth`, `billing`, `rateLimit`,
 `server`, `network`, `timeout`, `cancelled`, `cli`, `invalidResponse`,
-`unknown`) que dirige mensagens de erro distintas e acionáveis na UI.
+`unknown`) that drives distinct, actionable error messages in the UI.
 
-### Adicionar um provider novo
+### Adding a new provider
 
-1. Criar `src/providers/meuProvider.ts` expondo uma factory que retorna um
-   objeto `Provider` (reaproveite `postJson` para HTTP ou `runCli` para
-   CLI).
-2. Registrar o `ProviderMeta` em `registry.ts` (id, label, kind, se precisa
-   de chave, modelo default, URL do console de chaves).
-3. Adicionar o id ao union `ProviderId` em `types.ts`, aos defaults em
-   `config.ts` e às settings em `package.json`
+1. Create `src/providers/myProvider.ts` exposing a factory that returns a
+   `Provider` object (reuse `postJson` for HTTP or `runCli` for CLI).
+2. Register the `ProviderMeta` in `registry.ts` (id, label, kind, whether
+   it needs a key, default model, key console URL).
+3. Add the id to the `ProviderId` union in `types.ts`, to the defaults in
+   `config.ts` and to the settings in `package.json`
    (`generateCommit.<id>.model`, etc.).
-4. Instanciar em `createProviders` (`src/providersRuntime.ts`).
-5. Testes: parser/builder puros em `tests/providers.test.ts` e fluxo de
-   `generate` com mocks em `tests/providers-generate.test.ts`.
+4. Instantiate it in `createProviders` (`src/providersRuntime.ts`).
+5. Tests: pure parser/builders in `tests/providers.test.ts` and the
+   `generate` flow with mocks in `tests/providers-generate.test.ts`.
 
-## Build e testes
+## Build and tests
 
-- **Bundle**: esbuild (`esbuild.config.mjs`) gera `dist/extension.js`
-  (CJS, minificado, `vscode` externo). O VS Code carrega só esse arquivo.
-- **Testes**: Vitest, apenas módulos puros (sem import de `vscode`).
-  Módulos com efeitos colaterais (`runCli`, `postJson`) têm testes
-  comportamentais com processo filho real e fetch stubado; providers são
-  testados com `vi.mock` das camadas de transporte.
+- **Bundle**: esbuild (`esbuild.config.mjs`) produces `dist/extension.js`
+  (CJS, minified, `vscode` external). VS Code loads only this file.
+- **Tests**: Vitest, pure modules only (no `vscode` import). Modules with
+  side effects (`runCli`, `postJson`) have behavioral tests with a real
+  child process and stubbed fetch; providers are tested with `vi.mock` of
+  the transport layers.
 - **Lint/format**: Biome 2 (`biome check`).
-- **Empacotamento**: `@vscode/vsce` (`pnpm package`), com `.vscodeignore`
-  limitando o conteúdo a `dist/`, `images/`, manifest, README e LICENSE.
+- **Packaging**: `@vscode/vsce` (`pnpm package`), with `.vscodeignore`
+  limiting the contents to `dist/`, `images/`, manifest, README and
+  LICENSE.

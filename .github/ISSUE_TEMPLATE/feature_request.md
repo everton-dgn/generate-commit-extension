@@ -1,18 +1,18 @@
 ---
-name: Sugerir funcionalidade
-about: Uma ideia para melhorar a extensão
+name: Feature request
+about: An idea to improve the extension
 title: "feat: "
 labels: enhancement
 ---
 
-**Qual problema ela resolve**
+**What problem it solves**
 
-<!-- Descreva a dor ou o caso de uso. -->
+<!-- Describe the pain point or use case. -->
 
-**Solução proposta**
+**Proposed solution**
 
-<!-- Como você imagina que deveria funcionar. -->
+<!-- How you imagine it should work. -->
 
-**Alternativas consideradas**
+**Alternatives considered**
 
-<!-- Outras formas de resolver que você avaliou. -->
+<!-- Other ways of solving it that you evaluated. -->
