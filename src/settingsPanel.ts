@@ -52,6 +52,7 @@ interface PanelState {
   readonly maxDiffChars: number;
   readonly maxFileSizeKB: number;
   readonly includeRecentCommits: boolean;
+  readonly disableThinking: boolean;
   readonly customPrompt: string;
   readonly unstagedFallback: string;
   readonly timeoutSeconds: number;
@@ -235,6 +236,7 @@ export class SettingsPanelProvider implements vscode.WebviewViewProvider {
       maxDiffChars: cfg.maxDiffChars,
       maxFileSizeKB: cfg.maxFileSizeKB,
       includeRecentCommits: cfg.includeRecentCommits,
+      disableThinking: cfg.disableThinking,
       customPrompt: cfg.customPrompt,
       unstagedFallback: cfg.unstagedFallback,
       timeoutSeconds: cfg.timeoutSeconds,

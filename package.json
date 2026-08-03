@@ -83,6 +83,11 @@
           "default": true,
           "markdownDescription": "Include the 10 most recent commit subjects as style context."
         },
+        "generateCommit.disableThinking": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "Disable reasoning on CLI providers for lower latency: Codex runs with `model_reasoning_effort=\"none\"` and the Claude CLI with `MAX_THINKING_TOKENS=0` (both verified 2026-08-02). The Effort setting is ignored while this is on."
+        },
         "generateCommit.customPrompt": {
           "type": "string",
           "default": "",

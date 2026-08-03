@@ -5,18 +5,22 @@ import { type GenerateRequest, type Provider, ProviderError } from '../types';
 export interface ClaudeCliConfig {
   readonly model: string;
   readonly effort: string;
+  readonly disableThinking: boolean;
 }
 
 /**
  * Flags verificadas contra `claude --help` (Claude Code 2.1.220) em 2026-08-02:
  * -p, --tools "", --model, --effort, --output-format, --no-session-persistence.
  * Não existe flag --fast nesta versão (o modo fast é exclusivo do modo interativo).
+ * Thinking desligado via MAX_THINKING_TOKENS=0 (env documentada do Claude Code;
+ * smoke test em 2026-08-02).
  */
 export function buildClaudeArgs(cfg: ClaudeCliConfig): string[] {
   const args = ['-p', '--tools', '', '--output-format', 'text', '--no-session-persistence'];
   const model = cfg.model.trim();
   if (model) args.push('--model', model);
-  const effort = cfg.effort.trim();
+  // Com thinking desligado, --effort é irrelevante (não há blocos de raciocínio).
+  const effort = cfg.disableThinking ? '' : cfg.effort.trim();
   if (effort) args.push('--effort', effort);
   return args;
 }
@@ -53,14 +57,16 @@ export function createClaudeCliProvider(deps: ClaudeCliDeps): Provider {
           'Install it or switch provider',
         );
       }
+      const cfg = deps.getConfig();
       const result = await runCli({
         bin,
-        args: buildClaudeArgs(deps.getConfig()),
+        args: buildClaudeArgs(cfg),
         stdin: `${req.systemPrompt}\n\n${req.userPrompt}`,
         cwd: req.cwd,
         timeoutMs: req.timeoutMs,
         signal: req.signal,
         envRemove: ['CLAUDECODE', 'CLAUDE_CODE_ENTRYPOINT'],
+        env: cfg.disableThinking ? { MAX_THINKING_TOKENS: '0' } : undefined,
       });
       if (result.cancelled) throw new ProviderError('cancelled', 'Cancelled');
       if (result.timedOut) {

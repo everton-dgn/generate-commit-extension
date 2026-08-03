@@ -96,7 +96,9 @@ describe('provider generate/isAvailable', () => {
   it('claudeCli: unavailable without the binary, generate returns stdout', async () => {
     findBinaryMock.mockResolvedValue(null);
     const { createClaudeCliProvider } = await import('../src/providers/claudeCli');
-    const provider = createClaudeCliProvider({ getConfig: () => ({ model: '', effort: 'low' }) });
+    const provider = createClaudeCliProvider({
+      getConfig: () => ({ model: '', effort: 'low', disableThinking: false }),
+    });
     await expect(provider.isAvailable()).resolves.toBe(false);
     await expect(provider.generate(REQ)).rejects.toMatchObject({ kind: 'cli' });
     expect(runCliMock).not.toHaveBeenCalled();
@@ -114,7 +116,7 @@ describe('provider generate/isAvailable', () => {
     });
     const { createClaudeCliProvider } = await import('../src/providers/claudeCli');
     const provider = createClaudeCliProvider({
-      getConfig: () => ({ model: 'sonnet', effort: 'low' }),
+      getConfig: () => ({ model: 'sonnet', effort: 'low', disableThinking: false }),
     });
     await expect(provider.isAvailable()).resolves.toBe(true);
     await expect(provider.generate(REQ)).resolves.toBe('feat: z\n');
@@ -137,7 +139,9 @@ describe('provider generate/isAvailable', () => {
       cancelled: false,
     });
     const { createClaudeCliProvider } = await import('../src/providers/claudeCli');
-    const provider = createClaudeCliProvider({ getConfig: () => ({ model: '', effort: '' }) });
+    const provider = createClaudeCliProvider({
+      getConfig: () => ({ model: '', effort: '', disableThinking: false }),
+    });
     const err = await provider.generate(REQ).catch((e: unknown) => e);
     // vi.resetModules() quebra o instanceof entre registros; verifica estruturalmente.
     expect((err as Error).name).toBe('ProviderError');
@@ -156,7 +160,9 @@ describe('provider generate/isAvailable', () => {
       cancelled: false,
     });
     const { createCodexCliProvider } = await import('../src/providers/codexCli');
-    const provider = createCodexCliProvider({ getConfig: () => ({ model: '', effort: 'low' }) });
+    const provider = createCodexCliProvider({
+      getConfig: () => ({ model: '', effort: 'low', disableThinking: false }),
+    });
     await expect(provider.generate(REQ)).resolves.toBe('fix: from stdout');
     const call = runCliMock.mock.calls[0]?.[0] as { args: string[] };
     expect(call.args).toContain('approval_policy="never"');
@@ -172,7 +178,51 @@ describe('provider generate/isAvailable', () => {
       cancelled: true,
     });
     const { createCodexCliProvider } = await import('../src/providers/codexCli');
-    const provider = createCodexCliProvider({ getConfig: () => ({ model: '', effort: '' }) });
+    const provider = createCodexCliProvider({
+      getConfig: () => ({ model: '', effort: '', disableThinking: false }),
+    });
     await expect(provider.generate(REQ)).rejects.toMatchObject({ kind: 'cancelled' });
+  });
+
+  it('claudeCli: sets MAX_THINKING_TOKENS=0 when thinking is disabled', async () => {
+    vi.resetModules();
+    findBinaryMock.mockResolvedValue('/fake/claude');
+    runCliMock.mockResolvedValue({
+      code: 0,
+      stdout: 'feat: z\n',
+      stderr: '',
+      timedOut: false,
+      cancelled: false,
+    });
+    const { createClaudeCliProvider } = await import('../src/providers/claudeCli');
+    const provider = createClaudeCliProvider({
+      getConfig: () => ({ model: '', effort: 'low', disableThinking: true }),
+    });
+    await expect(provider.generate(REQ)).resolves.toBe('feat: z\n');
+    const call = runCliMock.mock.calls[0]?.[0] as {
+      env?: Record<string, string>;
+      args: string[];
+    };
+    expect(call.env).toEqual({ MAX_THINKING_TOKENS: '0' });
+    expect(call.args).not.toContain('--effort');
+  });
+
+  it('claudeCli: leaves env unset when thinking is enabled', async () => {
+    vi.resetModules();
+    findBinaryMock.mockResolvedValue('/fake/claude');
+    runCliMock.mockResolvedValue({
+      code: 0,
+      stdout: 'feat: z\n',
+      stderr: '',
+      timedOut: false,
+      cancelled: false,
+    });
+    const { createClaudeCliProvider } = await import('../src/providers/claudeCli');
+    const provider = createClaudeCliProvider({
+      getConfig: () => ({ model: '', effort: 'low', disableThinking: false }),
+    });
+    await provider.generate(REQ);
+    const call = runCliMock.mock.calls[0]?.[0] as { env?: Record<string, string> };
+    expect(call.env).toBeUndefined();
   });
 });

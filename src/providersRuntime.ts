@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { readProviderConfig, secretKeyFor } from './config';
+import { readAppConfig, readProviderConfig, secretKeyFor } from './config';
 import { logMeta } from './log';
 import { createAnthropicCompatibleProvider } from './providers/anthropic';
 import { createClaudeCliProvider } from './providers/claudeCli';
@@ -46,7 +46,11 @@ export function createProviders(context: vscode.ExtensionContext): Map<ProviderI
       createClaudeCliProvider({
         getConfig: () => {
           const cfg = readProviderConfig('claudeCli');
-          return { model: cfg.model, effort: cfg.effort };
+          return {
+            model: cfg.model,
+            effort: cfg.effort,
+            disableThinking: readAppConfig().disableThinking,
+          };
         },
         log: cliLog,
       }),
@@ -56,7 +60,11 @@ export function createProviders(context: vscode.ExtensionContext): Map<ProviderI
       createCodexCliProvider({
         getConfig: () => {
           const cfg = readProviderConfig('codexCli');
-          return { model: cfg.model, effort: cfg.effort };
+          return {
+            model: cfg.model,
+            effort: cfg.effort,
+            disableThinking: readAppConfig().disableThinking,
+          };
         },
         log: cliLog,
       }),

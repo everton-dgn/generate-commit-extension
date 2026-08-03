@@ -8,14 +8,18 @@ import { type GenerateRequest, type Provider, ProviderError } from '../types';
 export interface CodexCliConfig {
   readonly model: string;
   readonly effort: string;
+  readonly disableThinking: boolean;
 }
 
 /**
  * Flags verificadas contra `codex exec --help` (codex-cli 0.146.0) e a
- * referência oficial de configuração (`model_reasoning_effort`: minimal, low,
- * medium, high, xhigh) em 2026-08-02. Nota: a flag `-a/--ask-for-approval`
+ * referência oficial de configuração (`model_reasoning_effort`: none, low,
+ * medium, high, xhigh, max, ultra — níveis variam por modelo, lidos ao vivo
+ * de `codex debug models`) em 2026-08-02. Nota: a flag `-a/--ask-for-approval`
  * sumiu do `--help` entre duas leituras no mesmo dia e versão (superfície de
  * CLI dinâmica), então a política de aprovação é fixada via chave de configuração.
+ * `none` desliga o raciocínio (aceito mesmo não constando nos níveis por
+ * modelo do catálogo; smoke test em 2026-08-02).
  */
 export function buildCodexArgs(cfg: CodexCliConfig, outputFile: string): string[] {
   const args = [
@@ -33,7 +37,7 @@ export function buildCodexArgs(cfg: CodexCliConfig, outputFile: string): string[
   ];
   const model = cfg.model.trim();
   if (model) args.push('--model', model);
-  const effort = cfg.effort.trim();
+  const effort = cfg.disableThinking ? 'none' : cfg.effort.trim();
   if (effort) args.push('--config', `model_reasoning_effort="${effort}"`);
   return args;
 }

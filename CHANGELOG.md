@@ -8,6 +8,12 @@ versionamento semântico.
 
 ### Adicionado
 
+- `generateCommit.disableThinking`: desliga o raciocínio nos providers CLI
+  para menor latência (Codex com `model_reasoning_effort="none"`, Claude
+  CLI com `MAX_THINKING_TOKENS=0`). O dropdown de Effort fica desabilitado
+  no painel enquanto o toggle está ligado.
+- Campo "Custom prompt instructions" agora é uma textarea multilinha
+  redimensionável verticalmente.
 - Sugestões de modelo ao vivo no campo Model do painel: a lista completa é
   buscada no endpoint de modelos de cada provider (cache de 1 hora) e
   modelos novos aparecem automaticamente no dropdown, com a opção "Custom…"

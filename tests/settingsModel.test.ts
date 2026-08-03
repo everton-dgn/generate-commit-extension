@@ -64,6 +64,8 @@ describe('validateSettingValue', () => {
   it('validates booleans', () => {
     expect(validateSettingValue('includeRecentCommits', true)).toEqual({ ok: true, value: true });
     expect(validateSettingValue('includeRecentCommits', 'true').ok).toBe(false);
+    expect(validateSettingValue('disableThinking', true)).toEqual({ ok: true, value: true });
+    expect(validateSettingValue('disableThinking', 1).ok).toBe(false);
   });
 
   it('validates integers with minimum, accepting numeric strings', () => {
@@ -112,6 +114,7 @@ describe('validateSettingValue', () => {
       'maxDiffChars',
       'maxFileSizeKB',
       'includeRecentCommits',
+      'disableThinking',
       'customPrompt',
       'unstagedFallback',
       'timeoutSeconds',

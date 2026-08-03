@@ -47,6 +47,13 @@ h2 {
   outline-offset: -1px;
 }
 
+textarea.control {
+  resize: vertical;
+  min-height: 3em;
+  line-height: 1.4;
+  font-family: var(--vscode-editor-font-family, inherit);
+}
+
 .select-wrap {
   position: relative;
   display: block;

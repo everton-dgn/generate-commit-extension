@@ -14,6 +14,7 @@ export interface AppConfig {
   readonly customPrompt: string;
   readonly unstagedFallback: UnstagedFallback;
   readonly timeoutSeconds: number;
+  readonly disableThinking: boolean;
 }
 
 const SECTION = 'generateCommit';
@@ -35,6 +36,7 @@ export function readAppConfig(): AppConfig {
     customPrompt: c.get<string>('customPrompt', ''),
     unstagedFallback: unstaged === 'always' || unstaged === 'never' ? unstaged : 'ask',
     timeoutSeconds: clampNumber(c.get('timeoutSeconds'), 60, 5),
+    disableThinking: c.get<boolean>('disableThinking', false),
   };
 }
 
