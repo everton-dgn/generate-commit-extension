@@ -8,9 +8,10 @@ fixed.
 
 ## Threat model
 
-The extension sends **your diff content** to the AI provider you chose. That
-is the only data that leaves your machine, and these are the protection
-layers:
+The extension sends **your diff content** to the AI provider you chose, plus
+the request data that call requires: your API key (HTTP providers), the
+optional recent commit subjects and your custom prompt instructions. Nothing
+goes to any other service, and these are the protection layers:
 
 ### 1. Secret scanning before any send
 
@@ -79,10 +80,11 @@ layers:
 
 ### 6. CLI execution
 
-- Binaries resolved by validated name (`[A-Za-z0-9._-]+`) passed as a
-  positional argument to the shell (no interpolation into a command
-  string).
-- Spawn without a shell (`args` as an array), cwd at the repository root.
+- Binaries resolved by validated name (`[A-Za-z0-9._-]+`); during PATH
+  detection via the login shell, the name is passed as a positional
+  argument (`$1`), never interpolated into a command string.
+- Execution spawns the resolved binary directly, without a shell (`args`
+  as an array), cwd at the repository root.
 - Cancellation/timeout kills the **process group** (`detached` spawn +
   group signal), escalating SIGTERM → SIGKILL.
 - CLI providers neither receive nor require API keys (they use the CLI's

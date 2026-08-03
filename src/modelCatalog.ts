@@ -166,7 +166,9 @@ export class ModelCatalog {
       }
       return false;
     } catch {
-      // Offline, missing key or stale endpoint: keep the previous suggestions.
+      // Offline, missing key or stale endpoint: the cache is kept, but old
+      // suggestions only surface when the current endpoint/auth signature
+      // matches; after a config change nothing stale is exposed.
       return false;
     }
   }

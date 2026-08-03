@@ -162,8 +162,8 @@ export class SettingsPanelProvider implements vscode.WebviewViewProvider {
       this.context.subscriptions,
     );
     // Fetches the live model catalogs in the background; the form re-renders
-    // with suggestions when they arrive (failures keep the fields
-    // free-text only).
+    // with suggestions when they arrive (failures keep existing suggestions
+    // when a usable catalog exists; fields stay free-text only otherwise).
     this.refreshCatalogs();
     // Keeps the catalogs fresh while the panel is open; the TTL gate in
     // refresh() makes this a no-op until an entry actually expires.
