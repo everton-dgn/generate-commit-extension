@@ -253,13 +253,6 @@
           if (select) select.disabled = true;
         }
         section.append(effortField);
-        section.append(
-          checkboxInput(
-            'disableThinking',
-            state.disableThinking,
-            'Disable thinking (faster, less reasoning)',
-          ),
-        );
       } else {
         section.append(
           field('Base URL (HTTPS only)', textInput(`${active.id}.baseUrl`, active.baseUrl)),
@@ -357,6 +350,13 @@
         'includeRecentCommits',
         state.includeRecentCommits,
         'Include 10 recent commit subjects as style context',
+      ),
+    );
+    section.append(
+      checkboxInput(
+        'disableThinking',
+        state.disableThinking,
+        'Disable thinking on CLI providers (faster, less reasoning)',
       ),
     );
     section.append(
@@ -523,7 +523,12 @@
     if (ok || !app) return;
     const input = app.querySelector(`[data-key="${key}"]`);
     if (input && 'value' in input) {
-      input.value = stateValueFor(key);
+      // Em checkbox o estado visual é o checked, não o value.
+      if (input.type === 'checkbox') {
+        input.checked = stateValueFor(key) === true;
+      } else {
+        input.value = stateValueFor(key);
+      }
       input.classList.add('invalid-flash');
       setTimeout(() => input.classList.remove('invalid-flash'), 2000);
     }
