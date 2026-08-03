@@ -8,6 +8,9 @@ node_modules/**
 **/*.ts
 **/*.mts
 .gitignore
+.github/**
+CONTRIBUTING.md
+CODE_OF_CONDUCT.md
 biome.json
 tsconfig.json
 vitest.config.ts
