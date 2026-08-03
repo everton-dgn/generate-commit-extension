@@ -10,6 +10,8 @@ node_modules/**
 .gitignore
 .env*
 .github/**
+plans/**
+.claude/**
 CONTRIBUTING.md
 CODE_OF_CONDUCT.md
 SECURITY.md
