@@ -12,6 +12,7 @@ node_modules/**
 .github/**
 plans/**
 .claude/**
+images/screenshot-*.png
 CONTRIBUTING.md
 CODE_OF_CONDUCT.md
 SECURITY.md

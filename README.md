@@ -6,6 +6,12 @@ your staged diff, using the AI provider of your choice. The message is written
 into the Source Control commit box for you to review and edit. The extension
 **never commits for you**.
 
+## Screenshots
+
+| Settings panel in the sidebar | Generated message in the commit box |
+| --- | --- |
+| <img src="https://raw.githubusercontent.com/everton-dgn/generate-commit-extension/main/images/screenshot-panel.png" width="340" alt="Generate Commit settings panel in the sidebar"> | <img src="https://raw.githubusercontent.com/everton-dgn/generate-commit-extension/main/images/screenshot-commit.png" width="560" alt="Commit box showing a generated Conventional Commit message and the sparkles button"> |
+
 ## The commit box button (read first)
 
 The `scm/inputBox` contribution point (the same one Copilot uses for the
